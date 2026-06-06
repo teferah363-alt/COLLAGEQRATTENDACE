@@ -1,0 +1,555 @@
+
+html = """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QR Attendance System</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh}
+
+/* Login */
+.login-page{display:flex;justify-content:center;align-items:center;min-height:100vh;padding:20px}
+.login-card{background:white;padding:40px;border-radius:16px;width:100%;max-width:380px;box-shadow:0 4px 20px rgba(0,0,0,0.1);text-align:center}
+.login-card h2{color:#1a56db;margin-bottom:8px}
+.login-card p{color:#666;margin-bottom:25px}
+.login-card input{width:100%;padding:12px;margin-bottom:15px;border:2px solid #e5e7eb;border-radius:8px;font-size:1em}
+.login-card input:focus{outline:none;border-color:#1a56db}
+.login-card button{width:100%;padding:12px;background:#1a56db;color:white;border:none;border-radius:8px;font-size:1em;font-weight:600;cursor:pointer}
+.login-card button:hover{background:#1e429f}
+.login-card .error{color:#dc2626;font-size:0.9em;margin-top:10px;display:none}
+.login-card .hint{background:#dbeafe;color:#1e40af;padding:12px;border-radius:8px;margin-top:20px;font-size:0.85em}
+
+/* Layout */
+.app{display:none}
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:240px;background:#1e293b;color:white;padding:20px 0}
+.sidebar-header{padding:0 20px 20px;border-bottom:1px solid #334155;margin-bottom:15px}
+.sidebar-header h3{display:flex;align-items:center;gap:10px}
+.nav-item{padding:12px 20px;cursor:pointer;color:#94a3b8;transition:0.2s}
+.nav-item:hover,.nav-item.active{background:#334155;color:white}
+.nav-item i{width:24px}
+.logout{position:absolute;bottom:20px;left:20px;right:20px;padding:10px;background:#dc2626;border:none;color:white;border-radius:8px;cursor:pointer}
+
+.main-content{margin-left:240px;padding:25px}
+.page-header{margin-bottom:25px}
+.page-header h1{color:#1e293b;font-size:1.6em}
+.page-header p{color:#64748b}
+
+/* Cards */
+.card{background:white;padding:20px;border-radius:12px;margin-bottom:20px;box-shadow:0 1px 3px rgba(0,0,0,0.1)}
+.card h2{font-size:1.1em;color:#1e293b;margin-bottom:15px;display:flex;align-items:center;gap:8px}
+.card h2 i{color:#1a56db}
+
+/* Stats */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:15px;margin-bottom:25px}
+.stat-card{background:white;padding:20px;border-radius:12px;display:flex;align-items:center;gap:12px;box-shadow:0 1px 3px rgba(0,0,0,0.1)}
+.stat-icon{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:white;font-size:1.1em}
+.stat-icon.blue{background:#3b82f6}
+.stat-icon.green{background:#10b981}
+.stat-icon.red{background:#ef4444}
+.stat-icon.yellow{background:#f59e0b}
+.stat-num{font-size:1.6em;font-weight:bold;color:#1e293b}
+.stat-label{color:#64748b;font-size:0.85em}
+
+/* Forms */
+.form-group{margin-bottom:15px}
+.form-group label{display:block;margin-bottom:6px;font-weight:600;color:#374151;font-size:0.9em}
+.form-group input,.form-group select{width:100%;padding:10px;border:2px solid #e5e7eb;border-radius:8px;font-size:0.95em}
+.form-group input:focus,.form-group select:focus{outline:none;border-color:#1a56db}
+.btn{padding:10px 20px;border:none;border-radius:8px;cursor:pointer;font-size:0.9em;font-weight:600;display:inline-flex;align-items:center;gap:6px;margin:3px}
+.btn-blue{background:#1a56db;color:white}
+.btn-green{background:#059669;color:white}
+.btn-red{background:#dc2626;color:white}
+.btn-yellow{background:#d97706;color:white}
+.btn:hover{opacity:0.9}
+
+/* Tables */
+.table-container{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:0.9em}
+th,td{padding:10px;text-align:left;border-bottom:1px solid #e5e7eb}
+th{background:#f8fafc;color:#1e293b;font-weight:600}
+tr:hover{background:#f8fafc}
+
+/* Badges */
+.badge{padding:4px 10px;border-radius:20px;font-size:0.75em;font-weight:600}
+.badge-present{background:#d1fae5;color:#065f46}
+.badge-absent{background:#fee2e2;color:#991b1b}
+.badge-late{background:#fef3c7;color:#92400e}
+
+/* QR */
+.qr-box{text-align:center;padding:20px;background:#f8fafc;border-radius:12px;margin-top:15px}
+#qrcode{display:inline-block;padding:15px;background:white;border-radius:12px}
+
+/* Scanner */
+.scanner-box{max-width:400px;margin:0 auto}
+#reader{border-radius:12px;overflow:hidden}
+.scan-result{margin-top:15px;padding:15px;border-radius:8px;display:none;text-align:center}
+.scan-result.ok{background:#d1fae5;color:#065f46}
+.scan-result.err{background:#fee2e2;color:#991b1b}
+
+/* Attendance list */
+.att-item{display:flex;align-items:center;justify-content:space-between;padding:12px;background:#f8fafc;border-radius:8px;margin-bottom:8px}
+.att-info{display:flex;align-items:center;gap:10px}
+.att-avatar{width:36px;height:36px;border-radius:8px;background:#1a56db;color:white;display:flex;align-items:center;justify-content:center;font-weight:bold}
+.status-btns{display:flex;gap:4px}
+.s-btn{padding:6px 12px;border:none;border-radius:6px;font-size:0.8em;cursor:pointer;font-weight:600}
+.s-btn.p{background:#d1fae5;color:#065f46}
+.s-btn.a{background:#fee2e2;color:#991b1b}
+.s-btn.l{background:#fef3c7;color:#92400e}
+.s-btn.on{box-shadow:0 0 0 2px #1a56db}
+
+.hidden{display:none!important}
+.empty{text-align:center;padding:30px;color:#94a3b8}
+.empty i{font-size:2.5em;margin-bottom:10px}
+
+@media(max-width:768px){
+.sidebar{width:100%;transform:translateX(-100%);z-index:100}
+.sidebar.open{transform:translateX(0)}
+.main-content{margin-left:0}
+.stats{grid-template-columns:1fr 1fr}
+.att-item{flex-direction:column;align-items:flex-start;gap:8px}
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginPage" class="login-page">
+<div class="login-card">
+<h2><i class="fas fa-qrcode" style="color:#1a56db;font-size:2em"></i><br>QR Attendance</h2>
+<p>University Management System</p>
+<input type="text" id="loginUser" placeholder="Username" value="admin">
+<input type="password" id="loginPass" placeholder="Password" value="admin2024">
+<button onclick="login()"><i class="fas fa-sign-in-alt"></i> Login</button>
+<p class="error" id="loginError">Wrong username or password!</p>
+<div class="hint"><strong>Demo:</strong> admin / admin2024</div>
+</div>
+</div>
+
+<!-- APP -->
+<div id="mainApp" class="app">
+<div class="sidebar">
+<div class="sidebar-header"><h3><i class="fas fa-university"></i> UniAttendance</h3></div>
+<div class="nav-item active" onclick="showPage('dash',this)"><i class="fas fa-chart-line"></i> Dashboard</div>
+<div class="nav-item" onclick="showPage('qr',this)"><i class="fas fa-qrcode"></i> Generate QR</div>
+<div class="nav-item" onclick="showPage('scan',this)"><i class="fas fa-camera"></i> Scan QR</div>
+<div class="nav-item" onclick="showPage('mark',this)"><i class="fas fa-clipboard-check"></i> Mark Attendance</div>
+<div class="nav-item" onclick="showPage('students',this)"><i class="fas fa-users"></i> Students</div>
+<div class="nav-item" onclick="showPage('reports',this)"><i class="fas fa-file-alt"></i> Reports</div>
+<button class="logout" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+</div>
+
+<div class="main-content">
+
+<!-- DASHBOARD -->
+<div id="page-dash" class="page">
+<div class="page-header"><h1>Dashboard</h1><p>Attendance Overview</p></div>
+<div class="stats">
+<div class="stat-card"><div class="stat-icon blue"><i class="fas fa-users"></i></div><div><div class="stat-num" id="stTotal">0</div><div class="stat-label">Students</div></div></div>
+<div class="stat-card"><div class="stat-icon green"><i class="fas fa-check"></i></div><div><div class="stat-num" id="stPresent">0</div><div class="stat-label">Present</div></div></div>
+<div class="stat-card"><div class="stat-icon red"><i class="fas fa-times"></i></div><div><div class="stat-num" id="stAbsent">0</div><div class="stat-label">Absent</div></div></div>
+<div class="stat-card"><div class="stat-icon yellow"><i class="fas fa-clock"></i></div><div><div class="stat-num" id="stLate">0</div><div class="stat-label">Late</div></div></div>
+</div>
+<div class="card">
+<h2><i class="fas fa-calendar"></i> Today's Records</h2>
+<input type="date" id="dashDate" onchange="updateDash()" style="padding:8px;border:2px solid #e5e7eb;border-radius:8px;margin-bottom:15px">
+<div id="dashList"></div>
+</div>
+</div>
+
+<!-- GENERATE QR -->
+<div id="page-qr" class="page hidden">
+<div class="page-header"><h1>Generate QR Code</h1><p>Create QR for student attendance</p></div>
+<div class="card">
+<h2><i class="fas fa-user"></i> Student & Course</h2>
+<div class="form-group"><label>Student</label><select id="genStudent"><option value="">-- Select Student --</option></select></div>
+<div class="form-group"><label>Course</label><select id="genCourse"><option value="">-- Select Course --</option></select></div>
+<div class="form-group"><label>Session</label><input type="text" id="genSession" placeholder="e.g. Lecture 1"></div>
+<button class="btn btn-blue" onclick="genQR()"><i class="fas fa-magic"></i> Generate QR</button>
+<div class="qr-box" id="qrBox" style="display:none">
+<div id="qrcode"></div>
+<p id="qrInfo" style="margin-top:10px;color:#1e293b;font-weight:600"></p>
+<button class="btn btn-green" onclick="dlQR()"><i class="fas fa-download"></i> Download</button>
+</div>
+</div>
+</div>
+
+<!-- SCAN QR -->
+<div id="page-scan" class="page hidden">
+<div class="page-header"><h1>Scan QR Code</h1><p>Scan student QR to mark attendance</p></div>
+<div class="card">
+<h2><i class="fas fa-camera"></i> Camera Scan</h2>
+<div class="scanner-box"><div id="reader"></div></div>
+<div style="text-align:center;margin-top:15px">
+<button class="btn btn-blue" onclick="startScan()"><i class="fas fa-play"></i> Start</button>
+<button class="btn btn-red" onclick="stopScan()"><i class="fas fa-stop"></i> Stop</button>
+</div>
+<div id="scanResult" class="scan-result"></div>
+</div>
+<div class="card">
+<h2><i class="fas fa-keyboard"></i> Manual Entry</h2>
+<div class="form-group"><label>Student ID</label><input type="text" id="manualId" placeholder="Enter ID (e.g. CS001)"></div>
+<div class="form-group"><label>Course</label><select id="manualCourse"><option value="">-- Select Course --</option></select></div>
+<button class="btn btn-green" onclick="manualMark()"><i class="fas fa-check"></i> Mark Present</button>
+</div>
+</div>
+
+<!-- MARK ATTENDANCE -->
+<div id="page-mark" class="page hidden">
+<div class="page-header"><h1>Mark Attendance</h1><p>Manual attendance marking</p></div>
+<div class="card">
+<h2><i class="fas fa-filter"></i> Filter</h2>
+<div style="display:flex;gap:15px;flex-wrap:wrap;margin-bottom:15px">
+<div><label style="font-size:0.85em;color:#64748b">Date</label><input type="date" id="markDate" onchange="renderMark()"></div>
+<div><label style="font-size:0.85em;color:#64748b">Course</label><select id="markCourse" onchange="renderMark()"><option value="">All</option></select></div>
+</div>
+</div>
+<div class="card">
+<h2><i class="fas fa-users"></i> Students</h2>
+<input type="text" id="markSearch" placeholder="Search..." onkeyup="filterMark()" style="width:100%;padding:10px;border:2px solid #e5e7eb;border-radius:8px;margin-bottom:15px">
+<div id="markList"></div>
+</div>
+</div>
+
+<!-- STUDENTS -->
+<div id="page-students" class="page hidden">
+<div class="page-header"><h1>Students</h1><p>Manage student records</p></div>
+<div class="card">
+<h2><i class="fas fa-user-plus"></i> Add New Student</h2>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:15px">
+<div class="form-group"><label>Name</label><input type="text" id="addName" placeholder="Full name"></div>
+<div class="form-group"><label>Student ID</label><input type="text" id="addId" placeholder="e.g. CS001"></div>
+<div class="form-group"><label>Email</label><input type="email" id="addEmail" placeholder="Email"></div>
+<div class="form-group"><label>Department</label><select id="addDept"><option value="">Select</option></select></div>
+<div class="form-group"><label>Year</label><select id="addYear"><option value="1st">1st Year</option><option value="2nd">2nd Year</option><option value="3rd">3rd Year</option><option value="4th">4th Year</option></select></div>
+<div class="form-group"><label>Phone</label><input type="text" id="addPhone" placeholder="+251..."></div>
+</div>
+<button class="btn btn-green" onclick="addStudent()" style="margin-top:10px"><i class="fas fa-plus"></i> Add Student</button>
+<p id="addMsg" style="display:none;margin-top:10px;color:#059669"><i class="fas fa-check"></i> Student added!</p>
+</div>
+<div class="card">
+<h2><i class="fas fa-list"></i> All Students</h2>
+<input type="text" id="stuSearch" placeholder="Search..." onkeyup="searchStu()" style="width:100%;padding:10px;border:2px solid #e5e7eb;border-radius:8px;margin-bottom:15px">
+<div class="table-container">
+<table><thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Dept</th><th>Year</th><th>Phone</th><th>Action</th></tr></thead><tbody id="stuTable"></tbody></table>
+</div>
+</div>
+</div>
+
+<!-- REPORTS -->
+<div id="page-reports" class="page hidden">
+<div class="page-header"><h1>Reports</h1><p>View and export attendance reports</p></div>
+<div class="card">
+<h2><i class="fas fa-filter"></i> Filter</h2>
+<div style="display:flex;gap:15px;flex-wrap:wrap;margin-bottom:15px">
+<div><label style="font-size:0.85em;color:#64748b">From</label><input type="date" id="repFrom"></div>
+<div><label style="font-size:0.85em;color:#64748b">To</label><input type="date" id="repTo"></div>
+<div><label style="font-size:0.85em;color:#64748b">Course</label><select id="repCourse"><option value="">All</option></select></div>
+</div>
+<button class="btn btn-blue" onclick="genReport()"><i class="fas fa-eye"></i> View</button>
+<button class="btn btn-red" onclick="dlPDF()"><i class="fas fa-file-pdf"></i> PDF</button>
+<button class="btn btn-green" onclick="dlCSV()"><i class="fas fa-file-csv"></i> CSV</button>
+</div>
+<div class="card" id="repResult" style="display:none">
+<h2><i class="fas fa-file-alt"></i> Report</h2>
+<p id="repInfo" style="color:#64748b;margin-bottom:10px"></p>
+<div class="table-container" id="repTable"></div>
+</div>
+</div>
+
+</div>
+</div>
+
+<script>
+// Data
+var students=[],courses=[],attendance=[];
+var depts=['Computer Science','Electrical Engineering','Mechanical Engineering','Civil Engineering','Medicine','Business'];
+var scanner=null,curQR=null,curRep=[];
+
+// Demo data
+function loadDemo(){
+students=[
+{id:'CS001',name:'Abebe Kebede',email:'abebe@uni.edu',dept:'Computer Science',year:'3rd',phone:'+251911111111'},
+{id:'CS002',name:'Almaz Tadesse',email:'almaz@uni.edu',dept:'Computer Science',year:'3rd',phone:'+251922222222'},
+{id:'CS003',name:'Dawit Hailu',email:'dawit@uni.edu',dept:'Computer Science',year:'2nd',phone:'+251933333333'},
+{id:'EE001',name:'Fatuma Ahmed',email:'fatuma@uni.edu',dept:'Electrical Engineering',year:'4th',phone:'+251944444444'},
+{id:'ME001',name:'Helen Desta',email:'helen@uni.edu',dept:'Mechanical Engineering',year:'3rd',phone:'+251966666666'}
+];
+courses=[
+{code:'CS301',name:'Database Systems'},{code:'CS302',name:'Software Engineering'},
+{code:'EE401',name:'Power Systems'},{code:'ME301',name:'Thermodynamics'}
+];
+localStorage.setItem('uni_students',JSON.stringify(students));
+localStorage.setItem('uni_courses',JSON.stringify(courses));
+}
+
+// Init
+function init(){
+var s=localStorage.getItem('uni_students');
+var c=localStorage.getItem('uni_courses');
+var a=localStorage.getItem('uni_attendance');
+if(s)students=JSON.parse(s);else loadDemo();
+if(c)courses=JSON.parse(c);
+if(a)attendance=JSON.parse(a);
+if(localStorage.getItem('uni_session')==='active')showApp();
+var today=new Date().toISOString().split('T')[0];
+document.getElementById('dashDate').value=today;
+document.getElementById('markDate').value=today;
+document.getElementById('repFrom').value=today;
+document.getElementById('repTo').value=today;
+updateSelects();updateDash();renderStu();renderMark();
+}
+
+// Login
+function login(){
+var u=document.getElementById('loginUser').value.trim();
+var p=document.getElementById('loginPass').value;
+if(u==='admin'&&p==='admin2024'){
+localStorage.setItem('uni_session','active');
+showApp();
+}else{
+document.getElementById('loginError').style.display='block';
+setTimeout(function(){document.getElementById('loginError').style.display='none'},3000);
+}
+}
+function logout(){localStorage.removeItem('uni_session');location.reload()}
+function showApp(){
+document.getElementById('loginPage').style.display='none';
+document.getElementById('mainApp').style.display='block';
+updateDash();
+}
+
+// Navigation
+function showPage(page,nav){
+var pages=document.querySelectorAll('.page');
+for(var i=0;i<pages.length;i++)pages[i].classList.add('hidden');
+document.getElementById('page-'+page).classList.remove('hidden');
+var navs=document.querySelectorAll('.nav-item');
+for(var i=0;i<navs.length;i++)navs[i].classList.remove('active');
+if(nav)nav.classList.add('active');
+if(page!=='scan')stopScan();
+if(page==='dash')updateDash();
+if(page==='mark')renderMark();
+if(page==='students')renderStu();
+}
+
+// Update selects
+function updateSelects(){
+var st=document.getElementById('genStudent');
+if(st){st.innerHTML='<option value="">-- Select Student --</option>';for(var i=0;i<students.length;i++)st.innerHTML+='<option value="'+students[i].id+'">'+students[i].name+' ('+students[i].id+')</option>';}
+var cs=['genCourse','manualCourse','markCourse','repCourse'];
+for(var i=0;i<cs.length;i++){var el=document.getElementById(cs[i]);if(el){el.innerHTML='<option value="">'+(i<2?'-- Select Course --':'All')+'</option>';for(var j=0;j<courses.length;j++)el.innerHTML+='<option value="'+courses[j].code+'">'+courses[j].name+'</option>';}}
+var ds=['addDept','markDept','repDept'];
+for(var i=0;i<ds.length;i++){var el=document.getElementById(ds[i]);if(el){el.innerHTML='<option value="">'+(i===0?'Select Department':'All')+'</option>';for(var j=0;j<depts.length;j++)el.innerHTML+='<option value="'+depts[j]+'">'+depts[j]+'</option>';}}
+}
+
+// Dashboard
+function updateDash(){
+var date=document.getElementById('dashDate').value;
+var recs=[];for(var i=0;i<attendance.length;i++)if(attendance[i].date===date)recs.push(attendance[i]);
+var pre=0,abs=0,late=0;
+for(var i=0;i<recs.length;i++){if(recs[i].status==='Present')pre++;else if(recs[i].status==='Absent')abs++;else if(recs[i].status==='Late')late++;}
+document.getElementById('stTotal').textContent=students.length;
+document.getElementById('stPresent').textContent=pre;
+document.getElementById('stAbsent').textContent=abs;
+document.getElementById('stLate').textContent=late;
+var box=document.getElementById('dashList');
+if(recs.length===0){box.innerHTML='<div class="empty"><i class="fas fa-clipboard-list"></i><p>No records for '+date+'</p></div>';}
+else{
+var html='<table><thead><tr><th>Name</th><th>ID</th><th>Course</th><th>Status</th><th>Time</th></tr></thead><tbody>';
+for(var i=0;i<recs.length;i++){var r=recs[i];var b=r.status==='Present'?'badge-present':r.status==='Absent'?'badge-absent':'badge-late';html+='<tr><td>'+r.name+'</td><td>'+r.studentId+'</td><td>'+r.course+'</td><td><span class="badge '+b+'">'+r.status+'</span></td><td>'+r.time+'</td></tr>';}
+html+='</tbody></table>';box.innerHTML=html;
+}
+}
+
+// QR Generation
+function genQR(){
+var sid=document.getElementById('genStudent').value;
+var cid=document.getElementById('genCourse').value;
+var sess=document.getElementById('genSession').value.trim();
+if(!sid||!cid){alert('Select student and course!');return;}
+var stu=null,crs=null;
+for(var i=0;i<students.length;i++)if(students[i].id===sid){stu=students[i];break;}
+for(var i=0;i<courses.length;i++)if(courses[i].code===cid){crs=courses[i];break;}
+curQR={studentId:stu.id,name:stu.name,course:crs.code,courseName:crs.name,session:sess||'Regular',time:new Date().toISOString()};
+document.getElementById('qrcode').innerHTML='';
+new QRCode(document.getElementById('qrcode'),{text:JSON.stringify(curQR),width:200,height:200,colorDark:'#1a56db',colorLight:'#fff',correctLevel:QRCode.CorrectLevel.H});
+document.getElementById('qrInfo').textContent=stu.name+' - '+crs.name;
+document.getElementById('qrBox').style.display='block';
+}
+function dlQR(){
+var c=document.querySelector('#qrcode canvas');
+if(c){var a=document.createElement('a');a.download='QR-'+curQR.studentId+'.png';a.href=c.toDataURL();a.click();}
+}
+
+// Scanning
+function startScan(){
+if(scanner)return;
+if(typeof Html5Qrcode==='undefined'){alert('Scanner library not loaded. Check internet.');return;}
+scanner=new Html5Qrcode('reader');
+scanner.start({facingMode:'environment'},{fps:10,qrbox:{width:200,height:200}},function(text){onScan(text);},function(err){}).catch(function(err){showScan('err','Camera error. Allow camera access.');});
+}
+function stopScan(){if(scanner){scanner.stop().then(function(){scanner=null;}).catch(function(){});}}
+function onScan(text){
+try{var data=JSON.parse(text);if(data.studentId){markAtt(data.studentId,data.name,data.course||'General','QR Scan');return;}}catch(e){}
+var id=text.trim().toUpperCase();var stu=null;
+for(var i=0;i<students.length;i++)if(students[i].id===id){stu=students[i];break;}
+if(stu)markAtt(stu.id,stu.name,'General','Barcode');
+else showScan('err','Student ID "'+text+'" not found');
+}
+function manualMark(){
+var id=document.getElementById('manualId').value.trim().toUpperCase();
+var crs=document.getElementById('manualCourse').value||'General';
+if(!id){showScan('err','Please enter student ID');return;}
+var stu=null;
+for(var i=0;i<students.length;i++)if(students[i].id===id){stu=students[i];break;}
+if(stu){markAtt(stu.id,stu.name,crs,'Manual');document.getElementById('manualId').value='';}
+else showScan('err','No student with ID: '+id);
+}
+function markAtt(id,name,course,method){
+var now=new Date();var today=now.toISOString().split('T')[0];var time=now.toLocaleTimeString();
+for(var i=0;i<attendance.length;i++){if(attendance[i].studentId===id&&attendance[i].date===today&&attendance[i].course===course){showScan('err',name+' already marked today');return;}}
+attendance.push({studentId:id,name:name,course:course,date:today,time:time,status:'Present',method:method});
+localStorage.setItem('uni_attendance',JSON.stringify(attendance));
+showScan('ok','Marked Present! '+name+' - '+course);
+updateDash();
+}
+function showScan(type,msg){
+var r=document.getElementById('scanResult');
+r.className='scan-result '+type;
+r.innerHTML=(type==='ok'?'<i class="fas fa-check-circle" style="font-size:1.5em"></i><br>':'<i class="fas fa-times-circle" style="font-size:1.5em"></i><br>')+msg;
+r.style.display='block';
+setTimeout(function(){r.style.display='none';},4000);
+}
+
+// Mark Attendance
+function renderMark(){
+var date=document.getElementById('markDate').value;
+var crs=document.getElementById('markCourse').value;
+var box=document.getElementById('markList');
+box.innerHTML='';
+for(var i=0;i<students.length;i++){
+var s=students[i];
+var rec=null;
+for(var j=0;j<attendance.length;j++){if(attendance[j].studentId===s.id&&attendance[j].date===date&&(!crs||attendance[j].course===crs)){rec=attendance[j];break;}}
+var st=rec?rec.status:'Not Marked';
+var ap=st==='Present'?'on':'',aa=st==='Absent'?'on':'',al=st==='Late'?'on':'';
+var b=st==='Present'?'badge-present':st==='Absent'?'badge-absent':st==='Late'?'badge-late':'';
+box.innerHTML+='<div class="att-item"><div class="att-info"><div class="att-avatar">'+s.name.charAt(0)+'</div><div><div style="font-weight:600">'+s.name+'</div><div style="font-size:0.85em;color:#64748b">'+s.id+' | '+s.dept+'</div></div></div><div class="status-btns"><button class="s-btn p '+ap+'" onclick="setStatus(\''+s.id+'\',\'Present\')">Present</button><button class="s-btn a '+aa+'" onclick="setStatus(\''+s.id+'\',\'Absent\')">Absent</button><button class="s-btn l '+al+'" onclick="setStatus(\''+s.id+'\',\'Late\')">Late</button></div><span class="badge '+b+'">'+st+'</span></div>';
+}
+}
+function setStatus(id,status){
+var date=document.getElementById('markDate').value;
+var crs=document.getElementById('markCourse').value||'General';
+var na=[];
+for(var i=0;i<attendance.length;i++){if(!(attendance[i].studentId===id&&attendance[i].date===date&&attendance[i].course===crs))na.push(attendance[i]);}
+attendance=na;
+var stu=null;
+for(var i=0;i<students.length;i++)if(students[i].id===id){stu=students[i];break;}
+if(stu){attendance.push({studentId:id,name:stu.name,course:crs,date:date,time:new Date().toLocaleTimeString(),status:status,method:'Manual'});}
+localStorage.setItem('uni_attendance',JSON.stringify(attendance));
+renderMark();updateDash();
+}
+function filterMark(){
+var q=document.getElementById('markSearch').value.toLowerCase();
+var items=document.querySelectorAll('.att-item');
+for(var i=0;i<items.length;i++){items[i].style.display=items[i].textContent.toLowerCase().indexOf(q)!==-1?'flex':'none';}
+}
+
+// Students
+function addStudent(){
+var name=document.getElementById('addName').value.trim();
+var id=document.getElementById('addId').value.trim().toUpperCase();
+var email=document.getElementById('addEmail').value.trim();
+var dept=document.getElementById('addDept').value;
+var year=document.getElementById('addYear').value;
+var phone=document.getElementById('addPhone').value.trim();
+if(!name||!id){alert('Enter name and ID!');return;}
+for(var i=0;i<students.length;i++)if(students[i].id===id){alert('ID already exists!');return;}
+students.push({id:id,name:name,email:email,dept:dept,year:year,phone:phone});
+localStorage.setItem('uni_students',JSON.stringify(students));
+document.getElementById('addName').value='';document.getElementById('addId').value='';
+document.getElementById('addEmail').value='';document.getElementById('addPhone').value='';
+document.getElementById('addMsg').style.display='block';
+setTimeout(function(){document.getElementById('addMsg').style.display='none';},3000);
+updateSelects();renderStu();updateDash();renderMark();
+}
+function delStu(id){
+if(!confirm('Delete student '+id+'?'))return;
+var ns=[];
+for(var i=0;i<students.length;i++)if(students[i].id!==id)ns.push(students[i]);
+students=ns;
+localStorage.setItem('uni_students',JSON.stringify(students));
+renderStu();updateSelects();updateDash();renderMark();
+}
+function renderStu(){
+var tb=document.getElementById('stuTable');
+tb.innerHTML='';
+for(var i=0;i<students.length;i++){
+var s=students[i];
+tb.innerHTML+='<tr><td><b>'+s.id+'</b></td><td>'+s.name+'</td><td>'+(s.email||'-')+'</td><td>'+(s.dept||'-')+'</td><td>'+(s.year||'-')+'</td><td>'+(s.phone||'-')+'</td><td><button class="btn btn-red btn-sm" onclick="delStu(\''+s.id+'\')" style="padding:5px 10px;font-size:0.8em"><i class="fas fa-trash"></i></button></td></tr>';
+}
+}
+function searchStu(){
+var q=document.getElementById('stuSearch').value.toLowerCase();
+var rows=document.querySelectorAll('#stuTable tr');
+for(var i=0;i<rows.length;i++){rows[i].style.display=rows[i].textContent.toLowerCase().indexOf(q)!==-1?'':'none';}
+}
+
+// Reports
+function genReport(){
+var from=document.getElementById('repFrom').value;
+var to=document.getElementById('repTo').value;
+var crs=document.getElementById('repCourse').value;
+if(!from||!to){alert('Select date range!');return;}
+var data=[];
+for(var i=0;i<attendance.length;i++){var a=attendance[i];if(a.date>=from&&a.date<=to&&(!crs||a.course===crs))data.push(a);}
+curRep=data;
+document.getElementById('repResult').style.display='block';
+document.getElementById('repInfo').textContent='Period: '+from+' to '+to+' | Records: '+data.length;
+var html='<table><thead><tr><th>#</th><th>Date</th><th>Name</th><th>ID</th><th>Course</th><th>Status</th><th>Time</th></tr></thead><tbody>';
+for(var i=0;i<data.length;i++){var r=data[i];var b=r.status==='Present'?'badge-present':r.status==='Absent'?'badge-absent':'badge-late';html+='<tr><td>'+(i+1)+'</td><td>'+r.date+'</td><td>'+r.name+'</td><td>'+r.studentId+'</td><td>'+r.course+'</td><td><span class="badge '+b+'">'+r.status+'</span></td><td>'+r.time+'</td></tr>';}
+html+='</tbody></table>';
+document.getElementById('repTable').innerHTML=html;
+}
+function dlPDF(){
+if(curRep.length===0){alert('Generate report first!');return;}
+var from=document.getElementById('repFrom').value;
+var to=document.getElementById('repTo').value;
+var pre=0,abs=0,late=0;
+for(var i=0;i<curRep.length;i++){if(curRep[i].status==='Present')pre++;else if(curRep[i].status==='Absent')abs++;else if(curRep[i].status==='Late')late++;}
+var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Report</title><style>body{font-family:Arial;padding:20px;font-size:11px}h1{color:#1a56db;text-align:center}table{width:100%;border-collapse:collapse}th{background:#1a56db;color:white;padding:8px}td{padding:6px;border-bottom:1px solid #ddd}tr:nth-child(even){background:#f8fafc}.p{color:#059669;font-weight:bold}.a{color:#dc2626;font-weight:bold}.l{color:#d97706;font-weight:bold}</style></head><body>';
+html+='<h1>Attendance Report</h1><p style="text-align:center;color:#666">'+from+' to '+to+'</p>';
+html+='<table><thead><tr><th>#</th><th>Date</th><th>Name</th><th>ID</th><th>Course</th><th>Status</th><th>Time</th></tr></thead><tbody>';
+for(var i=0;i<curRep.length;i++){var r=curRep[i];html+='<tr><td>'+(i+1)+'</td><td>'+r.date+'</td><td>'+r.name+'</td><td>'+r.studentId+'</td><td>'+r.course+'</td><td class="'+r.status.toLowerCase().charAt(0)+'">'+r.status+'</td><td>'+r.time+'</td></tr>';}
+html+='</tbody></table></body></html>';
+var blob=new Blob([html],{type:'text/html'});
+var url=URL.createObjectURL(blob);
+window.open(url,'_blank');
+}
+function dlCSV(){
+var from=document.getElementById('repFrom').value;
+var to=document.getElementById('repTo').value;
+var crs=document.getElementById('repCourse').value;
+var data=[];
+for(var i=0;i<attendance.length;i++){var a=attendance[i];if(a.date>=from&&a.date<=to&&(!crs||a.course===crs))data.push(a);}
+var csv='Date,Name,ID,Course,Status,Time,Method\\n';
+for(var i=0;i<data.length;i++){var r=data[i];csv+=r.date+','+r.name+','+r.studentId+','+r.course+','+r.status+','+r.time+','+r.method+'\\n';}
+var blob=new Blob([csv],{type:'text/csv'});
+var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='report-'+from+'-to-'+to+'.csv';a.click();
+}
+
+init();
+</script>
+</body>
+</html>"""
+
+with open('/mnt/agents/output/qr_attendance_simple.html', 'w', encoding='utf-8') as f:
+    f.write(html)
+
+print("Simple QR Attendance System created!")
+print(f"File size: {len(html)/1024:.1f} KB")
