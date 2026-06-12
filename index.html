@@ -3,1318 +3,1256 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>QR + Face Attendance System</title>
+<title>EduScan — QR Attendance</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-<!-- Face-API.js for face recognition -->
-<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+<!-- jsQR for real camera QR decoding -->
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --navy: #0F1B2D; --navy-mid: #162236; --navy-light: #1E3050;
+  --teal: #00C9A7; --teal-dim: rgba(0,201,167,0.15);
+  --amber: #F59E0B; --amber-dim: rgba(245,158,11,0.15);
+  --red: #EF4444; --red-dim: rgba(239,68,68,0.12);
+  --white: #FFFFFF; --slate: #64748B; --slate-light: #94A3B8;
+  --border: rgba(255,255,255,0.07); --card: #162236; --card2: #1a2940;
+  --font-d: 'Space Grotesk', sans-serif; --font-b: 'Inter', sans-serif;
+  --r: 12px; --rs: 8px;
+}
+body { font-family: var(--font-b); background: var(--navy); color: var(--white); min-height: 100vh; display: flex; overflow: hidden; }
 
-/* Login */
-.login-page{display:flex;justify-content:center;align-items:center;min-height:100vh;padding:20px}
-.login-card{background:white;padding:40px;border-radius:16px;width:100%;max-width:380px;box-shadow:0 4px 20px rgba(0,0,0,0.1);text-align:center}
-.login-card h2{color:#1a56db;margin-bottom:8px}
-.login-card p{color:#666;margin-bottom:25px}
-.login-card input{width:100%;padding:12px;margin-bottom:15px;border:2px solid #e5e7eb;border-radius:8px;font-size:1em}
-.login-card input:focus{outline:none;border-color:#1a56db}
-.login-card button{width:100%;padding:12px;background:#1a56db;color:white;border:none;border-radius:8px;font-size:1em;font-weight:600;cursor:pointer}
-.login-card button:hover{background:#1e429f}
-.login-card .error{color:#dc2626;font-size:0.9em;margin-top:10px;display:none}
-.login-card .hint{background:#dbeafe;color:#1e40af;padding:12px;border-radius:8px;margin-top:20px;font-size:0.85em}
+/* ── LOGIN ── */
+#login-screen {
+  position: fixed; inset: 0; z-index: 999;
+  background: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+}
+#login-screen.hidden { display: none; }
+.login-box {
+  width: 420px; max-width: 95vw;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 20px; padding: 40px 36px;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+}
+.login-logo {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 28px;
+}
+.login-logo-icon {
+  width: 48px; height: 48px;
+  background: linear-gradient(135deg, var(--teal), #00a88c);
+  border-radius: 12px; display: flex; align-items: center; justify-content: center;
+  font-size: 24px;
+}
+.login-logo-text { font-family: var(--font-d); font-size: 22px; font-weight: 700; }
+.login-logo-sub { font-size: 12px; color: var(--slate-light); margin-top: 2px; }
+.login-title { font-family: var(--font-d); font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+.login-sub { font-size: 13px; color: var(--slate-light); margin-bottom: 28px; }
+.login-error { background: var(--red-dim); border: 1px solid rgba(239,68,68,0.2); border-radius: 8px; padding: 10px 14px; font-size: 13px; color: var(--red); margin-bottom: 16px; display: none; }
+.login-roles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 22px; }
+.role-btn {
+  padding: 12px; border-radius: 10px;
+  border: 2px solid var(--border); background: var(--navy-light);
+  color: var(--slate-light); cursor: pointer; text-align: center;
+  font-family: var(--font-b); font-size: 13px; font-weight: 600;
+  transition: all 0.15s;
+}
+.role-btn .role-icon { font-size: 22px; display: block; margin-bottom: 4px; }
+.role-btn:hover { border-color: var(--teal); color: var(--white); }
+.role-btn.selected { border-color: var(--teal); background: var(--teal-dim); color: var(--teal); }
+.login-divider { display: flex; align-items: center; gap: 12px; margin: 18px 0; }
+.login-divider span { font-size: 12px; color: var(--slate); white-space: nowrap; }
+.login-divider::before, .login-divider::after { content:''; flex:1; height:1px; background:var(--border); }
+.accounts-hint { background: var(--navy-light); border-radius: 8px; padding: 10px 14px; font-size: 12px; color: var(--slate-light); margin-bottom: 18px; line-height: 1.7; }
+.accounts-hint b { color: var(--slate-light); }
 
-/* Layout */
-.app{display:none}
-.sidebar{position:fixed;left:0;top:0;bottom:0;width:240px;background:#1e293b;color:white;padding:20px 0;overflow-y:auto}
-.sidebar-header{padding:0 20px 20px;border-bottom:1px solid #334155;margin-bottom:15px}
-.sidebar-header h3{display:flex;align-items:center;gap:10px}
-.nav-item{padding:12px 20px;cursor:pointer;color:#94a3b8;transition:0.2s}
-.nav-item:hover,.nav-item.active{background:#334155;color:white}
-.nav-item i{width:24px}
-.logout{position:absolute;bottom:20px;left:20px;right:20px;padding:10px;background:#dc2626;border:none;color:white;border-radius:8px;cursor:pointer}
+/* ── SIDEBAR ── */
+#app { display: flex; width: 100%; }
+.sidebar { width: 240px; min-height: 100vh; background: var(--navy-mid); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 24px 0; flex-shrink: 0; }
+.logo { padding: 0 20px 28px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+.logo-mark { display: flex; align-items: center; gap: 10px; font-family: var(--font-d); font-weight: 700; font-size: 18px; }
+.logo-icon { width: 36px; height: 36px; background: linear-gradient(135deg, var(--teal), #00a88c); border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+.logo-sub { font-size: 11px; color: var(--slate-light); margin-top: 2px; font-weight: 400; }
+nav { flex: 1; padding: 0 12px; }
+.nav-section-label { font-size: 10px; font-weight: 600; color: var(--slate); text-transform: uppercase; letter-spacing: 1px; padding: 0 8px; margin: 20px 0 6px; }
+.nav-btn { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; background: none; border: none; cursor: pointer; border-radius: var(--rs); color: var(--slate-light); font-family: var(--font-b); font-size: 14px; font-weight: 500; transition: all 0.18s; text-align: left; }
+.nav-btn .nav-icon { font-size: 17px; width: 22px; text-align: center; }
+.nav-btn:hover { background: var(--teal-dim); color: var(--white); }
+.nav-btn.active { background: var(--teal-dim); color: var(--teal); }
+.badge { margin-left: auto; background: var(--teal); color: var(--navy); font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 20px; }
+.sidebar-footer { padding: 16px 20px 0; border-top: 1px solid var(--border); font-size: 12px; color: var(--slate); }
+.user-chip { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+.avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, var(--teal), #00a88c); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--navy); }
 
-.main-content{margin-left:240px;padding:25px}
-.page-header{margin-bottom:25px}
-.page-header h1{color:#1e293b;font-size:1.6em}
-.page-header p{color:#64748b}
+/* ── MAIN ── */
+.main { flex: 1; overflow-y: auto; padding: 32px 36px; background: var(--navy); }
+.page { display: none; } .page.active { display: block; }
+.page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 28px; }
+.page-title { font-family: var(--font-d); font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
+.page-sub { font-size: 14px; color: var(--slate-light); margin-top: 4px; }
 
-/* Cards */
-.card{background:white;padding:20px;border-radius:12px;margin-bottom:20px;box-shadow:0 1px 3px rgba(0,0,0,0.1)}
-.card h2{font-size:1.1em;color:#1e293b;margin-bottom:15px;display:flex;align-items:center;gap:8px}
-.card h2 i{color:#1a56db}
+/* BUTTONS */
+.btn { display: inline-flex; align-items: center; gap: 7px; padding: 9px 18px; border-radius: var(--rs); font-family: var(--font-b); font-size: 14px; font-weight: 600; cursor: pointer; border: none; transition: all 0.18s; }
+.btn-primary { background: var(--teal); color: var(--navy); }
+.btn-primary:hover { background: #00dbb8; transform: translateY(-1px); }
+.btn-ghost { background: transparent; color: var(--slate-light); border: 1px solid var(--border); }
+.btn-ghost:hover { border-color: var(--teal); color: var(--teal); }
+.btn-amber { background: var(--amber); color: var(--navy); }
+.btn-amber:hover { background: #fbbf24; }
+.btn-danger { background: var(--red-dim); color: var(--red); border: 1px solid rgba(239,68,68,0.2); }
+.btn-danger:hover { background: rgba(239,68,68,0.2); }
+.btn-sm { padding: 6px 12px; font-size: 13px; }
 
-/* Stats */
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:15px;margin-bottom:25px}
-.stat-card{background:white;padding:20px;border-radius:12px;display:flex;align-items:center;gap:12px;box-shadow:0 1px 3px rgba(0,0,0,0.1)}
-.stat-icon{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:white;font-size:1.1em}
-.stat-icon.blue{background:#3b82f6}
-.stat-icon.green{background:#10b981}
-.stat-icon.red{background:#ef4444}
-.stat-icon.yellow{background:#f59e0b}
-.stat-icon.purple{background:#8b5cf6}
-.stat-icon.orange{background:#f97316}
-.stat-num{font-size:1.6em;font-weight:bold;color:#1e293b}
-.stat-label{color:#64748b;font-size:0.85em}
+/* CARDS */
+.card { background: var(--card); border: 1px solid var(--border); border-radius: var(--r); padding: 22px; }
+.stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+.stat-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--r); padding: 20px; position: relative; overflow: hidden; }
+.stat-card::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: var(--accent-color, var(--teal)); }
+.stat-label { font-size: 12px; color: var(--slate-light); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+.stat-value { font-family: var(--font-d); font-size: 32px; font-weight: 700; margin: 6px 0 2px; }
+.stat-delta { font-size: 12px; color: var(--slate); }
 
-/* Forms */
-.form-group{margin-bottom:15px}
-.form-group label{display:block;margin-bottom:6px;font-weight:600;color:#374151;font-size:0.9em}
-.form-group input,.form-group select{width:100%;padding:10px;border:2px solid #e5e7eb;border-radius:8px;font-size:0.95em}
-.form-group input:focus,.form-group select:focus{outline:none;border-color:#1a56db}
-.btn{padding:10px 20px;border:none;border-radius:8px;cursor:pointer;font-size:0.9em;font-weight:600;display:inline-flex;align-items:center;gap:6px;margin:3px}
-.btn-blue{background:#1a56db;color:white}
-.btn-green{background:#059669;color:white}
-.btn-red{background:#dc2626;color:white}
-.btn-yellow{background:#d97706;color:white}
-.btn-purple{background:#7c3aed;color:white}
-.btn-orange{background:#ea580c;color:white}
-.btn:hover{opacity:0.9}
+/* GRID */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 
-/* Tables */
-.table-container{overflow-x:auto}
-table{width:100%;border-collapse:collapse;font-size:0.9em}
-th,td{padding:10px;text-align:left;border-bottom:1px solid #e5e7eb}
-th{background:#f8fafc;color:#1e293b;font-weight:600}
-tr:hover{background:#f8fafc}
+/* TABLE */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+thead th { text-align: left; padding: 10px 14px; font-size: 11px; font-weight: 600; color: var(--slate); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); }
+tbody tr { border-bottom: 1px solid var(--border); transition: background 0.12s; }
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: rgba(255,255,255,0.025); }
+tbody td { padding: 12px 14px; }
 
-/* Badges */
-.badge{padding:4px 10px;border-radius:20px;font-size:0.75em;font-weight:600}
-.badge-present{background:#d1fae5;color:#065f46}
-.badge-absent{background:#fee2e2;color:#991b1b}
-.badge-late{background:#fef3c7;color:#92400e}
-.badge-excused{background:#e2e8f0;color:#475569}
-.badge-early{background:#dbeafe;color:#1e40af}
+/* PILL */
+.pill { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+.pill-green { background: rgba(0,201,167,0.15); color: var(--teal); }
+.pill-amber { background: var(--amber-dim); color: var(--amber); }
+.pill-red   { background: var(--red-dim); color: var(--red); }
+.pill-slate { background: rgba(100,116,139,0.2); color: var(--slate-light); }
 
-/* QR */
-.qr-box{text-align:center;padding:20px;background:#f8fafc;border-radius:12px;margin-top:15px}
-#qrcode{display:inline-block;padding:15px;background:white;border-radius:12px}
+.section-title { font-family: var(--font-d); font-size: 16px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; }
 
-/* Scanner */
-.scanner-box{max-width:400px;margin:0 auto}
-#reader{border-radius:12px;overflow:hidden}
-.scan-result{margin-top:15px;padding:15px;border-radius:8px;display:none;text-align:center}
-.scan-result.ok{background:#d1fae5;color:#065f46}
-.scan-result.err{background:#fee2e2;color:#991b1b}
+/* ── CAMERA SCANNER ── */
+.scanner-panel {
+  background: var(--navy-light);
+  border: 2px solid var(--border);
+  border-radius: 16px; padding: 24px;
+  text-align: center; position: relative;
+}
+.camera-wrap {
+  position: relative; width: 100%; max-width: 340px;
+  margin: 0 auto 16px; border-radius: 12px; overflow: hidden;
+  background: #000; aspect-ratio: 1;
+}
+#camera-video {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+  border-radius: 12px;
+}
+#camera-canvas { display: none; }
+.cam-overlay {
+  position: absolute; inset: 0;
+  pointer-events: none;
+}
+.cam-corner {
+  position: absolute; width: 22px; height: 22px;
+  border-color: var(--teal); border-style: solid;
+}
+.cam-corner.tl { top: 12px; left: 12px; border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
+.cam-corner.tr { top: 12px; right: 12px; border-width: 3px 3px 0 0; border-radius: 0 4px 0 0; }
+.cam-corner.bl { bottom: 12px; left: 12px; border-width: 0 0 3px 3px; border-radius: 0 0 0 4px; }
+.cam-corner.br { bottom: 12px; right: 12px; border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
+.cam-beam {
+  position: absolute; left: 16px; right: 16px; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--teal), transparent);
+  box-shadow: 0 0 10px var(--teal);
+  animation: camBeam 2.2s ease-in-out infinite;
+  top: 16px;
+}
+@keyframes camBeam {
+  0%   { top: 16px; opacity: 1; }
+  45%  { top: calc(100% - 18px); opacity: 1; }
+  50%  { opacity: 0.2; }
+  55%  { top: 16px; opacity: 1; }
+  100% { top: 16px; opacity: 1; }
+}
+.cam-placeholder {
+  width: 100%; max-width: 340px; aspect-ratio: 1;
+  margin: 0 auto 16px;
+  background: var(--navy-mid); border-radius: 12px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  border: 2px dashed var(--border); gap: 10px;
+}
+.cam-placeholder .cam-big-icon { font-size: 52px; opacity: 0.4; }
+.cam-placeholder p { font-size: 13px; color: var(--slate); }
+.scan-status { font-family: var(--font-d); font-size: 15px; font-weight: 600; color: var(--teal); margin-bottom: 4px; }
+.scan-sub { font-size: 13px; color: var(--slate-light); margin-bottom: 16px; }
+.scan-entry { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 8px; background: rgba(0,201,167,0.07); margin-bottom: 8px; border: 1px solid rgba(0,201,167,0.15); animation: slideIn 0.3s ease; }
+@keyframes slideIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+.scan-entry-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--teal); flex-shrink: 0; }
+.scan-entry-name { font-weight: 600; font-size: 14px; }
+.scan-entry-time { font-size: 12px; color: var(--slate-light); margin-left: auto; }
 
-/* Attendance list */
-.att-item{display:flex;align-items:center;justify-content:space-between;padding:12px;background:#f8fafc;border-radius:8px;margin-bottom:8px}
-.att-info{display:flex;align-items:center;gap:10px}
-.att-avatar{width:36px;height:36px;border-radius:8px;background:#1a56db;color:white;display:flex;align-items:center;justify-content:center;font-weight:bold}
-.status-btns{display:flex;gap:4px;flex-wrap:wrap}
-.s-btn{padding:6px 12px;border:none;border-radius:6px;font-size:0.8em;cursor:pointer;font-weight:600}
-.s-btn.p{background:#d1fae5;color:#065f46}
-.s-btn.a{background:#fee2e2;color:#991b1b}
-.s-btn.l{background:#fef3c7;color:#92400e}
-.s-btn.e{background:#e2e8f0;color:#475569}
-.s-btn.ear{background:#dbeafe;color:#1e40af}
-.s-btn.on{box-shadow:0 0 0 2px #1a56db}
+/* SUCCESS FLASH */
+.success-flash { position: absolute; inset: 0; background: rgba(0,201,167,0.25); border-radius: 12px; animation: flash 0.5s ease forwards; pointer-events: none; }
+@keyframes flash { 0%{opacity:1} 100%{opacity:0;display:none} }
 
-.hidden{display:none!important}
-.empty{text-align:center;padding:30px;color:#94a3b8}
-.empty i{font-size:2.5em;margin-bottom:10px}
+/* QR DISPLAY */
+.qr-display { background: white; padding: 16px; border-radius: 12px; display: inline-block; }
 
-/* ===== FACE RECOGNITION STYLES ===== */
-.face-scan-container{max-width:500px;margin:0 auto;text-align:center}
-.face-video-wrapper{position:relative;width:100%;max-width:400px;margin:0 auto;border-radius:12px;overflow:hidden;background:#1e293b;aspect-ratio:4/3}
-.face-video-wrapper video,.face-video-wrapper canvas{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover}
-.face-overlay{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:10}
-.face-status{margin-top:15px;padding:15px;border-radius:10px;font-weight:600;font-size:1.1em;min-height:50px;display:flex;align-items:center;justify-content:center;gap:10px}
-.face-status.loading{background:#dbeafe;color:#1e40af}
-.face-status.success{background:#d1fae5;color:#065f46}
-.face-status.error{background:#fee2e2;color:#991b1b}
-.face-status.waiting{background:#fef3c7;color:#92400e}
-.face-controls{margin-top:15px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+/* FORM */
+.form-group { margin-bottom: 18px; }
+.form-label { display: block; font-size: 13px; font-weight: 600; color: var(--slate-light); margin-bottom: 7px; }
+.form-input, .form-select { width: 100%; padding: 10px 14px; background: var(--navy); border: 1px solid var(--border); border-radius: var(--rs); color: var(--white); font-family: var(--font-b); font-size: 14px; transition: border-color 0.15s; outline: none; }
+.form-input:focus, .form-select:focus { border-color: var(--teal); }
+.form-select option { background: var(--navy-mid); }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 
-/* Student face photo in add form */
-.photo-upload{display:flex;align-items:center;gap:15px;margin-top:10px}
-.photo-upload input[type="file"]{display:none}
-.photo-upload .preview{width:80px;height:80px;border-radius:8px;border:2px dashed #cbd5e1;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:1.5em;overflow:hidden;background:#f8fafc}
-.photo-upload .preview img{width:100%;height:100%;object-fit:cover}
+/* MODAL */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 300; align-items: center; justify-content: center; }
+.modal-overlay.open { display: flex; }
+.modal { background: var(--card2); border: 1px solid var(--border); border-radius: 16px; padding: 28px; width: 500px; max-width: 96vw; position: relative; max-height: 90vh; overflow-y: auto; }
+.modal-title { font-family: var(--font-d); font-size: 20px; font-weight: 700; margin-bottom: 20px; }
+.modal-close { position: absolute; top: 16px; right: 18px; background: none; border: none; color: var(--slate-light); font-size: 20px; cursor: pointer; }
+.modal-close:hover { color: var(--white); }
 
-/* Loading models */
-.models-loading{padding:20px;background:#f8fafc;border-radius:12px;text-align:center;margin-bottom:15px}
-.models-loading .progress-bar{width:100%;height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden;margin:10px 0}
-.models-loading .progress-fill{height:100%;background:#1a56db;border-radius:4px;transition:width 0.3s;width:0%}
+/* TOAST */
+.toast-area { position: fixed; bottom: 28px; right: 28px; display: flex; flex-direction: column; gap: 10px; z-index: 500; }
+.toast { background: var(--card2); border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; font-size: 14px; min-width: 240px; display: flex; align-items: center; gap: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); animation: toastIn 0.3s ease; }
+@keyframes toastIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+.toast-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 
-@media(max-width:768px){
-.sidebar{width:100%;transform:translateX(-100%);z-index:100}
-.sidebar.open{transform:translateX(0)}
-.main-content{margin-left:0}
-.stats{grid-template-columns:1fr 1fr}
-.att-item{flex-direction:column;align-items:flex-start;gap:8px}
-.face-video-wrapper{max-width:100%}
+/* MISC */
+.empty-state { text-align: center; padding: 40px 24px; color: var(--slate); }
+.empty-state .empty-icon { font-size: 40px; margin-bottom: 12px; }
+.empty-state p { font-size: 14px; }
+.progress-bar { height: 6px; border-radius: 4px; background: var(--navy-light); overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--teal), #00dbb8); transition: width 0.4s ease; }
+.tabs { display: flex; gap: 4px; margin-bottom: 22px; background: var(--navy-mid); padding: 4px; border-radius: 10px; width: fit-content; }
+.tab-btn { padding: 8px 18px; border-radius: 8px; border: none; cursor: pointer; font-family: var(--font-b); font-size: 13px; font-weight: 600; background: none; color: var(--slate-light); transition: all 0.15s; }
+.tab-btn.active { background: var(--teal); color: var(--navy); }
+.search-box { display: flex; align-items: center; gap: 8px; background: var(--navy-mid); border: 1px solid var(--border); border-radius: var(--rs); padding: 8px 14px; width: 260px; }
+.search-box input { background: none; border: none; outline: none; color: var(--white); font-size: 14px; flex: 1; font-family: var(--font-b); }
+.search-box input::placeholder { color: var(--slate); }
+
+@media (max-width: 900px) {
+  .sidebar { width: 64px; }
+  .sidebar .logo-mark span:not(.logo-icon), .sidebar .logo-sub,
+  .sidebar .nav-btn span:not(.nav-icon), .sidebar .badge,
+  .sidebar .sidebar-footer .user-info, .nav-section-label { display: none; }
+  .sidebar { padding: 16px 8px; }
+  .nav-btn { justify-content: center; }
+  .logo { padding: 0 0 20px; text-align: center; }
+  .logo-mark { justify-content: center; }
+  .main { padding: 20px 16px; }
+  .stat-grid { grid-template-columns: 1fr 1fr; }
+  .grid-2 { grid-template-columns: 1fr; }
 }
 </style>
-<base target="_blank">
 </head>
 <body>
 
-<!-- LOGIN -->
-<div id="loginPage" class="login-page">
-<div class="login-card">
-<h2><i class="fas fa-qrcode" style="color:#1a56db;font-size:2em"></i><br>QR + Face Attendance</h2>
-<p>University Management System</p>
-<input type="text" id="loginUser" placeholder="Username" value="admin">
-<input type="password" id="loginPass" placeholder="Password" value="admin2024">
-<button onclick="login()"><i class="fas fa-sign-in-alt"></i> Login</button>
-<p class="error" id="loginError">Wrong username or password!</p>
-<div class="hint"><strong>Demo:</strong> admin / admin2024</div>
-</div>
+<!-- ══════════════ LOGIN SCREEN ══════════════ -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="login-logo-icon">📡</div>
+      <div>
+        <div class="login-logo-text">EduScan</div>
+        <div class="login-logo-sub">College QR Attendance System</div>
+      </div>
+    </div>
+
+    <div class="login-title">Welcome back</div>
+    <div class="login-sub">Sign in to continue</div>
+
+    <div id="login-error" class="login-error">Invalid username or password.</div>
+
+    <div style="margin-bottom:16px">
+      <div class="form-label">Login as</div>
+      <div class="login-roles">
+        <button class="role-btn selected" id="role-admin" onclick="selectRole('admin')">
+          <span class="role-icon">🎓</span>Admin / Lecturer
+        </button>
+        <button class="role-btn" id="role-student" onclick="selectRole('student')">
+          <span class="role-icon">👤</span>Student
+        </button>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Username</label>
+      <input class="form-input" id="login-user" placeholder="Enter username" autocomplete="username">
+    </div>
+    <div class="form-group" style="margin-bottom:22px">
+      <label class="form-label">Password</label>
+      <input class="form-input" id="login-pass" type="password" placeholder="Enter password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+
+    <button class="btn btn-primary" style="width:100%;justify-content:center;padding:12px" onclick="doLogin()">Sign In →</button>
+
+    <div class="login-divider"><span>Need access?</span></div>
+    <div class="accounts-hint">
+      Contact your system administrator to get your login credentials.
+    </div>
+  </div>
 </div>
 
-<!-- APP -->
-<div id="mainApp" class="app">
-<div class="sidebar">
-<div class="sidebar-header"><h3><i class="fas fa-university"></i> UniAttendance</h3></div>
-<div class="nav-item active" onclick="showPage('dash',this)"><i class="fas fa-chart-line"></i> Dashboard</div>
-<div class="nav-item" onclick="showPage('qr',this)"><i class="fas fa-qrcode"></i> Generate QR</div>
-<div class="nav-item" onclick="showPage('scan',this)"><i class="fas fa-camera"></i> Scan QR</div>
-<div class="nav-item" onclick="showPage('barcode',this)"><i class="fas fa-barcode"></i> Scan Barcode</div>
-<!-- NEW: Face Recognition Nav -->
-<div class="nav-item" onclick="showPage('face',this)"><i class="fas fa-face-smile"></i> Face Attendance</div>
-<div class="nav-item" onclick="showPage('mark',this)"><i class="fas fa-clipboard-check"></i> Mark Attendance</div>
-<div class="nav-item" onclick="showPage('students',this)"><i class="fas fa-users"></i> Students</div>
-<div class="nav-item" onclick="showPage('reports',this)"><i class="fas fa-file-alt"></i> Reports</div>
-<button class="logout" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+<!-- ══════════════ APP ══════════════ -->
+<div id="app">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="logo">
+    <div class="logo-mark">
+      <div class="logo-icon">📡</div>
+      <div>
+        <div>EduScan</div>
+        <div class="logo-sub">College Attendance</div>
+      </div>
+    </div>
+  </div>
+
+  <nav id="main-nav">
+    <div class="nav-section-label">Overview</div>
+    <button class="nav-btn active" onclick="showPage('dashboard', this)">
+      <span class="nav-icon">📊</span><span>Dashboard</span>
+    </button>
+
+    <div class="nav-section-label">Attendance</div>
+    <button class="nav-btn" onclick="showPage('scanner', this)">
+      <span class="nav-icon">📷</span><span>QR Scanner</span>
+      <span class="badge" id="live-count">0</span>
+    </button>
+    <button class="nav-btn admin-only" onclick="showPage('manual', this)">
+      <span class="nav-icon">✏️</span><span>Manual Entry</span>
+    </button>
+    <button class="nav-btn admin-only" onclick="showPage('sessions', this)">
+      <span class="nav-icon">📅</span><span>Sessions</span>
+    </button>
+
+    <div class="nav-section-label">Records</div>
+    <button class="nav-btn admin-only" onclick="showPage('students', this)">
+      <span class="nav-icon">👥</span><span>Students</span>
+    </button>
+    <button class="nav-btn" onclick="showPage('reports', this)">
+      <span class="nav-icon">📈</span><span>Reports</span>
+    </button>
+
+    <div class="nav-section-label">Account</div>
+    <button class="nav-btn" onclick="doLogout()">
+      <span class="nav-icon">🚪</span><span>Logout</span>
+    </button>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="user-chip">
+      <div class="avatar" id="sb-avatar">?</div>
+      <div class="user-info">
+        <div style="font-size:13px;font-weight:600;color:var(--white)" id="sb-name">—</div>
+        <div style="font-size:11px;color:var(--slate)" id="sb-role">—</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- DASHBOARD -->
+  <div id="page-dashboard" class="page active">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Dashboard</div>
+        <div class="page-sub" id="today-date"></div>
+      </div>
+      <button class="btn btn-primary admin-only" onclick="openModal('new-session-modal')">+ New Session</button>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-card" style="--accent-color:var(--teal)">
+        <div class="stat-label">Total Students</div>
+        <div class="stat-value" id="stat-total">0</div>
+        <div class="stat-delta">Enrolled</div>
+      </div>
+      <div class="stat-card" style="--accent-color:var(--teal)">
+        <div class="stat-label">Present Today</div>
+        <div class="stat-value" id="stat-present" style="color:var(--teal)">0</div>
+        <div class="stat-delta" id="stat-pct">—</div>
+      </div>
+      <div class="stat-card" style="--accent-color:var(--amber)">
+        <div class="stat-label">Absent Today</div>
+        <div class="stat-value" id="stat-absent" style="color:var(--amber)">0</div>
+        <div class="stat-delta" id="stat-abs-pct">—</div>
+      </div>
+      <div class="stat-card" style="--accent-color:#818cf8">
+        <div class="stat-label">Active Sessions</div>
+        <div class="stat-value" id="stat-sessions" style="color:#818cf8">0</div>
+        <div class="stat-delta">This term</div>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="section-title">Recent Attendance</div>
+        <div id="dash-recent"></div>
+      </div>
+      <div class="card">
+        <div class="section-title">Course Attendance Rate</div>
+        <div id="course-rates"></div>
+      </div>
+    </div>
+    <div style="margin-top:20px" class="card">
+      <div class="section-title">Sessions Overview</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Session</th><th>Course</th><th>Dept</th><th>Date</th><th>Present</th><th>Rate</th><th>Status</th></tr></thead>
+          <tbody id="dash-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCANNER -->
+  <div id="page-scanner" class="page">
+    <div class="page-header">
+      <div>
+        <div class="page-title">QR Scanner</div>
+        <div class="page-sub">Use your camera to scan student QR codes</div>
+      </div>
+      <select class="form-select" style="width:260px" id="scanner-session-select">
+        <option value="">— Select Session —</option>
+      </select>
+    </div>
+
+    <div class="grid-2">
+      <div>
+        <div class="scanner-panel">
+          <!-- Placeholder shown before camera starts -->
+          <div id="cam-placeholder" class="cam-placeholder">
+            <div class="cam-big-icon">📷</div>
+            <p>Camera not started</p>
+            <p style="font-size:12px">Select a session and click Start Camera</p>
+          </div>
+
+          <!-- Camera view shown when active -->
+          <div id="cam-wrap" class="camera-wrap" style="display:none">
+            <video id="camera-video" autoplay muted playsinline></video>
+            <canvas id="camera-canvas"></canvas>
+            <div class="cam-overlay">
+              <div class="cam-corner tl"></div><div class="cam-corner tr"></div>
+              <div class="cam-corner bl"></div><div class="cam-corner br"></div>
+              <div class="cam-beam"></div>
+            </div>
+          </div>
+
+          <div class="scan-status" id="scan-status">Ready to scan</div>
+          <div class="scan-sub" id="scan-sub-text">Select a session, then open camera</div>
+
+          <div style="display:flex;gap:10px;justify-content:center;margin-top:12px">
+            <button class="btn btn-primary" id="cam-start-btn" onclick="startCamera()">📷 Start Camera</button>
+            <button class="btn btn-danger" id="cam-stop-btn" onclick="stopCamera()" style="display:none">⏹ Stop Camera</button>
+          </div>
+        </div>
+
+        <!-- Student QR codes (admin view) -->
+        <div class="card admin-only" style="margin-top:16px">
+          <div class="section-title">Student QR Codes <span style="font-size:12px;color:var(--slate-light);font-weight:400">Click to show full QR</span></div>
+          <div id="student-qr-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">
+          Live Scan Feed
+          <span id="live-scan-badge" class="pill pill-green">0 scanned</span>
+        </div>
+        <div id="scan-feed"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MANUAL ENTRY -->
+  <div id="page-manual" class="page admin-only">
+    <div class="page-header">
+      <div><div class="page-title">Manual Entry</div><div class="page-sub">Record attendance without QR scan</div></div>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="section-title">Mark Attendance</div>
+        <div class="form-group">
+          <label class="form-label">Session</label>
+          <select class="form-select" id="manual-session"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Student</label>
+          <select class="form-select" id="manual-student"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <select class="form-select" id="manual-status">
+            <option value="present">✅ Present</option>
+            <option value="absent">❌ Absent</option>
+            <option value="late">⏰ Late</option>
+            <option value="excused">📝 Excused</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Note (optional)</label>
+          <input class="form-input" id="manual-note" placeholder="e.g. Medical leave, late arrival…">
+        </div>
+        <button class="btn btn-amber" style="width:100%;justify-content:center" onclick="submitManual()">✏️ Submit Entry</button>
+      </div>
+      <div class="card">
+        <div class="section-title">Today's Manual Entries</div>
+        <div id="manual-list"><div class="empty-state"><div class="empty-icon">📝</div><p>No manual entries yet</p></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SESSIONS -->
+  <div id="page-sessions" class="page admin-only">
+    <div class="page-header">
+      <div><div class="page-title">Sessions</div><div class="page-sub">Manage lecture/lab sessions</div></div>
+      <button class="btn btn-primary" onclick="openModal('new-session-modal')">+ New Session</button>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <div class="tabs">
+          <button class="tab-btn active" onclick="filterSessions('all',this)">All</button>
+          <button class="tab-btn" onclick="filterSessions('active',this)">Active</button>
+          <button class="tab-btn" onclick="filterSessions('closed',this)">Closed</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Session</th><th>Course</th><th>Department</th><th>Lecturer</th><th>Date</th><th>Time</th><th>Present</th><th>Rate</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="sessions-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- STUDENTS -->
+  <div id="page-students" class="page admin-only">
+    <div class="page-header">
+      <div><div class="page-title">Students</div><div class="page-sub">Enrolled college students</div></div>
+      <div style="display:flex;gap:10px">
+        <div class="search-box"><span>🔍</span><input placeholder="Search students…" id="student-search" oninput="renderStudentTable()"></div>
+        <button class="btn btn-primary" onclick="openModal('add-student-modal')">+ Add Student</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Student</th><th>ID</th><th>Gender</th><th>Department</th><th>Year</th><th>Present</th><th>Absent</th><th>Rate</th><th>QR</th><th></th></tr></thead>
+          <tbody id="students-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- REPORTS -->
+  <div id="page-reports" class="page">
+    <div class="page-header">
+      <div><div class="page-title">Reports</div><div class="page-sub">Full attendance history</div></div>
+      <button class="btn btn-ghost" onclick="exportCSV()">⬇ Export CSV</button>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-card" style="--accent-color:var(--teal)"><div class="stat-label">Total Records</div><div class="stat-value" id="rep-total">0</div></div>
+      <div class="stat-card" style="--accent-color:var(--teal)"><div class="stat-label">Present</div><div class="stat-value" id="rep-present" style="color:var(--teal)">0</div></div>
+      <div class="stat-card" style="--accent-color:var(--amber)"><div class="stat-label">Absent</div><div class="stat-value" id="rep-absent" style="color:var(--amber)">0</div></div>
+      <div class="stat-card" style="--accent-color:#818cf8"><div class="stat-label">Avg Rate</div><div class="stat-value" id="rep-rate" style="color:#818cf8">—</div></div>
+    </div>
+    <div class="card">
+      <div class="section-title">All Attendance Records</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Student</th><th>ID</th><th>Course</th><th>Session</th><th>Date</th><th>Time</th><th>Method</th><th>Status</th></tr></thead>
+          <tbody id="reports-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</main>
+</div><!-- #app -->
+
+<!-- ══ MODALS ══ -->
+<div class="modal-overlay" id="new-session-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('new-session-modal')">✕</button>
+    <div class="modal-title">Create New Session</div>
+    <div class="form-group">
+      <label class="form-label">Session Name</label>
+      <input class="form-input" id="sess-name" placeholder="e.g. Morning Lecture — Week 3">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Course</label>
+        <input class="form-input" id="sess-course" placeholder="e.g. Data Structures">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Course Code</label>
+        <input class="form-input" id="sess-code" placeholder="e.g. CS301">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Department</label>
+        <select class="form-select" id="sess-dept">
+          <option>Computer Science</option>
+          <option>Information Technology</option>
+          <option>Software Engineering</option>
+          <option>Electrical Engineering</option>
+          <option>Business Administration</option>
+          <option>Mathematics</option>
+          <option>Physics</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Lecturer</label>
+        <input class="form-input" id="sess-lecturer" placeholder="e.g. Dr. Alemu">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Date</label>
+        <input class="form-input" id="sess-date" type="date">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Time</label>
+        <input class="form-input" id="sess-time" type="time">
+      </div>
+    </div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="createSession()">Create Session</button>
+  </div>
 </div>
 
-<div class="main-content">
-
-<!-- DASHBOARD -->
-<div id="page-dash" class="page">
-<div class="page-header"><h1>Dashboard</h1><p>Attendance Overview</p></div>
-<div class="stats">
-<div class="stat-card"><div class="stat-icon blue"><i class="fas fa-users"></i></div><div><div class="stat-num" id="stTotal">0</div><div class="stat-label">Students</div></div></div>
-<div class="stat-card"><div class="stat-icon green"><i class="fas fa-check"></i></div><div><div class="stat-num" id="stPresent">0</div><div class="stat-label">Present</div></div></div>
-<div class="stat-card"><div class="stat-icon red"><i class="fas fa-times"></i></div><div><div class="stat-num" id="stAbsent">0</div><div class="stat-label">Absent</div></div></div>
-<div class="stat-card"><div class="stat-icon yellow"><i class="fas fa-clock"></i></div><div><div class="stat-num" id="stLate">0</div><div class="stat-label">Late</div></div></div>
-<div class="stat-card"><div class="stat-icon purple"><i class="fas fa-calendar-check"></i></div><div><div class="stat-num" id="stExcused">0</div><div class="stat-label">Excused</div></div></div>
-<div class="stat-card"><div class="stat-icon orange"><i class="fas fa-running"></i></div><div><div class="stat-num" id="stEarly">0</div><div class="stat-label">Early Leave</div></div></div>
-</div>
-<div class="card">
-<h2><i class="fas fa-calendar"></i> Today's Records</h2>
-<input type="date" id="dashDate" onchange="updateDash()" style="padding:8px;border:2px solid #e5e7eb;border-radius:8px;margin-bottom:15px">
-<div id="dashList"></div>
-</div>
-</div>
-
-<!-- GENERATE QR -->
-<div id="page-qr" class="page hidden">
-<div class="page-header"><h1>Generate QR Code</h1><p>Create QR for student attendance</p></div>
-<div class="card">
-<h2><i class="fas fa-user"></i> Student & Course</h2>
-<div class="form-group"><label>Student</label><select id="genStudent"><option value="">-- Select Student --</option></select></div>
-<div class="form-group"><label>Course</label><select id="genCourse"><option value="">-- Select Course --</option></select></div>
-<div class="form-group"><label>Session</label><input type="text" id="genSession" placeholder="e.g. Lecture 1"></div>
-<button class="btn btn-blue" onclick="genQR()"><i class="fas fa-magic"></i> Generate QR</button>
-<div class="qr-box" id="qrBox" style="display:none">
-<div id="qrcode"></div>
-<p id="qrInfo" style="margin-top:10px;color:#1e293b;font-weight:600"></p>
-<button class="btn btn-green" onclick="dlQR()"><i class="fas fa-download"></i> Download</button>
-</div>
-</div>
-</div>
-
-<!-- SCAN QR -->
-<div id="page-scan" class="page hidden">
-<div class="page-header"><h1>Scan QR Code</h1><p>Scan student QR to mark attendance</p></div>
-<div class="card">
-<h2><i class="fas fa-camera"></i> Camera Scan</h2>
-<div class="scanner-box"><div id="reader"></div></div>
-<div style="text-align:center;margin-top:15px">
-<button class="btn btn-blue" onclick="startScan()"><i class="fas fa-play"></i> Start</button>
-<button class="btn btn-red" onclick="stopScan()"><i class="fas fa-stop"></i> Stop</button>
-</div>
-<div id="scanResult" class="scan-result"></div>
-</div>
-<div class="card">
-<h2><i class="fas fa-keyboard"></i> Manual Entry</h2>
-<div class="form-group"><label>Student ID</label><input type="text" id="manualId" placeholder="Enter ID (e.g. CS001)"></div>
-<div class="form-group"><label>Course</label><select id="manualCourse"><option value="">-- Select Course --</option></select></div>
-<button class="btn btn-green" onclick="manualMark()"><i class="fas fa-check"></i> Mark Present</button>
-</div>
+<div class="modal-overlay" id="add-student-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('add-student-modal')">✕</button>
+    <div class="modal-title">Add New Student</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">First Name</label>
+        <input class="form-input" id="stu-first" placeholder="First name">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Last Name</label>
+        <input class="form-input" id="stu-last" placeholder="Last name">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Student ID</label>
+        <input class="form-input" id="stu-id" placeholder="e.g. UGR/1234/15">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Year / Level</label>
+        <select class="form-select" id="stu-year">
+          <option>1st Year</option><option>2nd Year</option><option>3rd Year</option>
+          <option>4th Year</option><option>5th Year</option><option>Postgraduate</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Department</label>
+      <select class="form-select" id="stu-dept">
+        <option>Computer Science</option>
+        <option>Information Technology</option>
+        <option>Software Engineering</option>
+        <option>Electrical Engineering</option>
+        <option>Business Administration</option>
+        <option>Mathematics</option>
+        <option>Physics</option>
+        <option>Other</option>
+      </select>
+    </div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="addStudent()">Add Student</button>
+  </div>
 </div>
 
-<!-- BARCODE SCAN -->
-<div id="page-barcode" class="page hidden">
-<div class="page-header"><h1><i class="fas fa-barcode"></i> Barcode Scan</h1><p>Scan student barcode/ID card to mark attendance</p></div>
-<div class="card">
-<h2><i class="fas fa-barcode"></i> Barcode Scanner</h2>
-<div class="scanner-box"><div id="barcodeReader"></div></div>
-<div style="text-align:center;margin-top:15px">
-<button class="btn btn-blue" onclick="startBarcodeScan()"><i class="fas fa-play"></i> Start Scanner</button>
-<button class="btn btn-red" onclick="stopBarcodeScan()"><i class="fas fa-stop"></i> Stop</button>
-</div>
-<div id="barcodeResult" class="scan-result"></div>
-</div>
-<div class="card">
-<h2><i class="fas fa-info-circle"></i> How to Use</h2>
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;font-size:0.9em;color:#475569">
-<div><i class="fas fa-1" style="color:#1a56db;margin-right:8px"></i><strong>Start Scanner:</strong> Click "Start Scanner" to open camera</div>
-<div><i class="fas fa-2" style="color:#1a56db;margin-right:8px"></i><strong>Scan Barcode:</strong> Hold barcode/ID card in front of camera</div>
-<div><i class="fas fa-3" style="color:#1a56db;margin-right:8px"></i><strong>Auto Detect:</strong> System reads barcode and finds student</div>
-<div><i class="fas fa-4" style="color:#1a56db;margin-right:8px"></i><strong>Mark Attendance:</strong> Attendance marked automatically with Name, ID & Status</div>
-</div>
-</div>
-<div class="card">
-<h2><i class="fas fa-keyboard"></i> Manual Barcode Entry</h2>
-<div class="form-group"><label>Barcode / Student ID</label><input type="text" id="manualBarcode" placeholder="Enter barcode or ID (e.g. CS001)"></div>
-<div class="form-group"><label>Course</label><select id="barcodeCourse"><option value="">-- Select Course --</option></select></div>
-<button class="btn btn-green" onclick="manualBarcodeMark()"><i class="fas fa-check"></i> Mark Present</button>
-</div>
+<div class="modal-overlay" id="qr-view-modal">
+  <div class="modal" style="text-align:center">
+    <button class="modal-close" onclick="closeModal('qr-view-modal')">✕</button>
+    <div class="modal-title" id="qr-view-name"></div>
+    <div id="qr-view-sub" style="font-size:13px;color:var(--slate-light);margin-bottom:18px"></div>
+    <div id="qr-view-container" style="margin:0 auto 16px;width:fit-content"></div>
+    <div style="font-size:12px;color:var(--slate)">Student scans this code to mark attendance</div>
+  </div>
 </div>
 
-<!-- ===== FACE RECOGNITION ATTENDANCE PAGE ===== -->
-<div id="page-face" class="page hidden">
-<div class="page-header"><h1><i class="fas fa-face-smile"></i> Face Attendance</h1><p>Look at the camera to auto-mark your attendance</p></div>
-
-<!-- Model Loading Status -->
-<div class="models-loading" id="faceModelsLoading">
-<i class="fas fa-brain" style="font-size:2em;color:#1a56db;margin-bottom:10px"></i>
-<p style="font-weight:600;color:#1e293b">Loading Face Recognition Models...</p>
-<div class="progress-bar"><div class="progress-fill" id="faceProgress"></div></div>
-<p id="faceModelStatus" style="font-size:0.85em;color:#64748b">Initializing...</p>
-</div>
-
-<div class="card" id="faceCard" style="display:none">
-<h2><i class="fas fa-video"></i> Face Scanner</h2>
-<div class="face-scan-container">
-<div class="face-video-wrapper" id="faceVideoWrapper">
-<video id="faceVideo" autoplay muted playsinline></video>
-<canvas id="faceOverlay" class="face-overlay"></canvas>
-</div>
-<div class="face-controls">
-<button class="btn btn-blue" id="btnFaceStart" onclick="startFaceScan()" disabled><i class="fas fa-play"></i> Start Camera</button>
-<button class="btn btn-red" onclick="stopFaceScan()"><i class="fas fa-stop"></i> Stop</button>
-</div>
-<div class="face-status waiting" id="faceStatus">
-<i class="fas fa-hand"></i> Click "Start Camera" to begin face recognition
-</div>
-</div>
-</div>
-
-<div class="card" id="faceResultCard" style="display:none">
-<h2><i class="fas fa-id-card"></i> Recognition Result</h2>
-<div id="faceResultContent" style="text-align:center">
-<div id="faceDetectedInfo"></div>
-</div>
-</div>
-
-<div class="card">
-<h2><i class="fas fa-info-circle"></i> How It Works</h2>
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;font-size:0.9em;color:#475569">
-<div><i class="fas fa-1" style="color:#1a56db;margin-right:8px"></i><strong>Register Face:</strong> Add student photo when creating a student profile</div>
-<div><i class="fas fa-2" style="color:#1a56db;margin-right:8px"></i><strong>Start Camera:</strong> Click "Start Camera" to open face recognition</div>
-<div><i class="fas fa-3" style="color:#1a56db;margin-right:8px"></i><strong>Auto Detect:</strong> System detects and matches your face automatically</div>
-<div><i class="fas fa-4" style="color:#1a56db;margin-right:8px"></i><strong>Mark Attendance:</strong> Your name, ID & status appear automatically</div>
-</div>
-</div>
-</div>
-
-<!-- MARK ATTENDANCE -->
-<div id="page-mark" class="page hidden">
-<div class="page-header"><h1>Mark Attendance</h1><p>Manual attendance marking</p></div>
-<div class="card">
-<h2><i class="fas fa-filter"></i> Filter</h2>
-<div style="display:flex;gap:15px;flex-wrap:wrap;margin-bottom:15px">
-<div><label style="font-size:0.85em;color:#64748b">Date</label><input type="date" id="markDate" onchange="renderMark()"></div>
-<div><label style="font-size:0.85em;color:#64748b">Course</label><select id="markCourse" onchange="renderMark()"><option value="">All</option></select></div>
-<div><label style="font-size:0.85em;color:#64748b">Department</label><select id="markDept" onchange="renderMark()"><option value="">All</option></select></div>
-</div>
-</div>
-<div class="card">
-<h2><i class="fas fa-users"></i> Students</h2>
-<input type="text" id="markSearch" placeholder="Search..." onkeyup="filterMark()" style="width:100%;padding:10px;border:2px solid #e5e7eb;border-radius:8px;margin-bottom:15px">
-<div id="markList"></div>
-</div>
-</div>
-
-<!-- STUDENTS -->
-<div id="page-students" class="page hidden">
-<div class="page-header"><h1>Students</h1><p>Manage student records</p></div>
-<div class="card">
-<h2><i class="fas fa-user-plus"></i> Add New Student</h2>
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:15px">
-<div class="form-group"><label>Full Name</label><input type="text" id="addName" placeholder="Full name"></div>
-<div class="form-group"><label>Student ID</label><input type="text" id="addId" placeholder="e.g. CS001"></div>
-<div class="form-group"><label>Email</label><input type="email" id="addEmail" placeholder="Email"></div>
-<div class="form-group"><label>Department</label><select id="addDept"><option value="">Select</option></select></div>
-<div class="form-group"><label>Year</label><select id="addYear"><option value="1st">1st Year</option><option value="2nd">2nd Year</option><option value="3rd">3rd Year</option><option value="4th">4th Year</option></select></div>
-<div class="form-group"><label>Phone</label><input type="text" id="addPhone" placeholder="+251..."></div>
-</div>
-<!-- NEW: Face Photo Upload -->
-<div class="form-group" style="margin-top:15px">
-<label><i class="fas fa-camera" style="color:#1a56db;margin-right:5px"></i> Face Photo (for recognition)</label>
-<div class="photo-upload">
-<div class="preview" id="facePreview"><i class="fas fa-user"></i></div>
-<div>
-<button class="btn btn-blue" onclick="document.getElementById('facePhotoInput').click()"><i class="fas fa-upload"></i> Choose Photo</button>
-<input type="file" id="facePhotoInput" accept="image/*" onchange="previewFacePhoto(this)">
-<p style="font-size:0.8em;color:#94a3b8;margin-top:5px">Upload a clear front-facing photo for face recognition</p>
-</div>
-</div>
-</div>
-<button class="btn btn-green" onclick="addStudent()" style="margin-top:10px"><i class="fas fa-plus"></i> Add Student</button>
-<p id="addMsg" style="display:none;margin-top:10px;color:#059669"><i class="fas fa-check"></i> Student added!</p>
-</div>
-<div class="card">
-<h2><i class="fas fa-list"></i> All Students</h2>
-<input type="text" id="stuSearch" placeholder="Search..." onkeyup="searchStu()" style="width:100%;padding:10px;border:2px solid #e5e7eb;border-radius:8px;margin-bottom:15px">
-<div class="table-container">
-<table><thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Dept</th><th>Year</th><th>Phone</th><th>Face</th><th>Action</th></tr></thead><tbody id="stuTable"></tbody></table>
-</div>
-</div>
-</div>
-
-<!-- REPORTS -->
-<div id="page-reports" class="page hidden">
-<div class="page-header"><h1>Reports</h1><p>View and export attendance reports</p></div>
-<div class="card">
-<h2><i class="fas fa-filter"></i> Filter</h2>
-<div style="display:flex;gap:15px;flex-wrap:wrap;margin-bottom:15px">
-<div><label style="font-size:0.85em;color:#64748b">From</label><input type="date" id="repFrom"></div>
-<div><label style="font-size:0.85em;color:#64748b">To</label><input type="date" id="repTo"></div>
-<div><label style="font-size:0.85em;color:#64748b">Course</label><select id="repCourse"><option value="">All</option></select></div>
-<div><label style="font-size:0.85em;color:#64748b">Department</label><select id="repDept"><option value="">All</option></select></div>
-</div>
-<button class="btn btn-blue" onclick="genReport()"><i class="fas fa-eye"></i> View</button>
-<button class="btn btn-red" onclick="dlPDF()"><i class="fas fa-file-pdf"></i> PDF</button>
-<button class="btn btn-green" onclick="dlCSV()"><i class="fas fa-file-csv"></i> CSV</button>
-</div>
-<div class="card" id="repResult" style="display:none">
-<h2><i class="fas fa-file-alt"></i> Report</h2>
-<p id="repInfo" style="color:#64748b;margin-bottom:10px"></p>
-<div class="table-container" id="repTable"></div>
-</div>
-</div>
-
-</div>
-</div>
+<div class="toast-area" id="toast-area"></div>
 
 <script>
-// ===== DATA =====
-var students=[];
-var courses=[];
-var attendance=[];
-var depts=['Computer Science','Electrical Engineering','Mechanical Engineering','Civil Engineering','Medicine','Business','Law','Pharmacy','Web Development','Database Administration','Information Technology','Software Engineering','Data Science','Cyber Security'];
-var scanner=null;
-var curQR=null;
-var curRep=[];
+// ══ DEMO ACCOUNTS ══
+const ACCOUNTS = {
+  admin:    { pass:'admin123', role:'admin',   name:'Admin User',    dept:'Administration' },
+  lecturer: { pass:'lec123',   role:'admin',   name:'Dr. Alemu',     dept:'Computer Science' },
+  student:  { pass:'stu123',   role:'student', name:'Demo Student',  dept:'Computer Science', id:'UGR/0001/22' },
+};
 
+let currentUser = null;
+let selectedRole = 'admin';
 
-// ===== BARCODE SCANNING =====
-var barcodeScanner = null;
+// ══ STATE ══
+let students = [
+  { id:'RITW/661/17',  first:'Abinet',       last:'Teklu Gebrekiristos', gender:'M', dept:'Information Technology', year:'3rd Year' },
+  { id:'RITW/1230/17', first:'Amanuel',      last:'Belete Mossa',        gender:'M', dept:'Information Technology', year:'3rd Year' },
+  { id:'RITW/1178/17', first:'Amriya',       last:'Misbah Menur',        gender:'F', dept:'Information Technology', year:'3rd Year' },
+  { id:'RITW/1070/17', first:'Ansif',        last:'Jira Abdissa',        gender:'M', dept:'Information Technology', year:'3rd Year' },
+  { id:'RITW/1251/17', first:'Beimnet',      last:'Firew Bekele',        gender:'M', dept:'Information Technology', year:'3rd Year' },
+  { id:'RITW/1336/17', first:'Biniyam',      last:'Zerihun Adugna',      gender:'M', dept:'Information Technology', year:'3rd Year' },
+  { id:'RITW/1105/17', first:'Daniel',       last:'Mulatu Eyob',         gender:'M', dept:'Information Technology', year:'3rd Year' },
+  { id:'RITW/1068/17', first:'Daniel',       last:'Teklu Kebede',        gender:'M', dept:'Information Technology', year:'3rd Year' },
+  { id:'RITW/1069/17', first:'Daniya',       last:'Nuri Wabela',         gender:'F', dept:'Information Technology', year:'3rd Year' },
+  { id:'RITW/1107/17', first:'Endalkachew',  last:'Solomon Belay',       gender:'M', dept:'Information Technology', year:'3rd Year' },
+  { id:'RITW/1334/17', first:'Fasika',       last:'Desalegn Kedir',      gender:'F', dept:'Information Technology', year:'3rd Year' },
+  { id:'RITW/1348/17', first:'Feruza',       last:'Kasim Yasin',         gender:'F', dept:'Information Technology', year:'3rd Year' },
+  { id:'RITW/1139/17', first:'Freselam',     last:'Ayalew Kassa',        gender:'F', dept:'Information Technology', year:'3rd Year' },
+  { id:'RITW/1138/17', first:'Habtemariam',  last:'Kebede Birhanu',      gender:'M', dept:'Information Technology', year:'3rd Year' },
+  { id:'RITW/434/17',  first:'Hana',         last:'Admassu Agonafer',    gender:'F', dept:'Information Technology', year:'3rd Year' },
+  { id:'RITW/1063/17', first:'Hana',         last:'Tefera Belay',        gender:'F', dept:'Information Technology', year:'3rd Year' },
+  { id:'RITW/438/17',  first:'Hayat',        last:'Ridwan Jemal',        gender:'F', dept:'Information Technology', year:'3rd Year' },
+];
+let sessions = [];
+let attendanceRecords = [];
+let sessionFilter = 'all';
 
-function startBarcodeScan(){
-  if(barcodeScanner){return;}
-  if(typeof Html5Qrcode==='undefined'){alert('Scanner library not loaded. Check internet.');return;}
-  barcodeScanner=new Html5Qrcode('barcodeReader');
-  barcodeScanner.start(
-    {facingMode:'environment'},
-    {fps:10,qrbox:{width:250,height:150}},
-    function(text){onBarcodeScan(text);},
-    function(err){}
-  ).catch(function(err){
-    showBarcodeResult('err','Camera error. Allow camera access.');
+// Camera state
+let videoStream = null;
+let scanInterval = null;
+let lastScanned = null;
+let lastScannedTime = 0;
+
+// ══ LOGIN ══
+function selectRole(r) {
+  selectedRole = r;
+  document.getElementById('role-admin').classList.toggle('selected', r==='admin');
+  document.getElementById('role-student').classList.toggle('selected', r==='student');
+}
+
+function doLogin() {
+  const user = document.getElementById('login-user').value.trim().toLowerCase();
+  const pass = document.getElementById('login-pass').value;
+  const errEl = document.getElementById('login-error');
+  const acc = ACCOUNTS[user];
+  if (!acc || acc.pass !== pass || acc.role !== selectedRole) {
+    errEl.style.display = 'block';
+    errEl.textContent = 'Invalid username or password for selected role.';
+    return;
+  }
+  errEl.style.display = 'none';
+  currentUser = { username: user, ...acc };
+  document.getElementById('login-screen').classList.add('hidden');
+
+  // Sidebar user info
+  document.getElementById('sb-name').textContent = currentUser.name;
+  document.getElementById('sb-role').textContent = currentUser.role === 'admin' ? 'Admin / Lecturer' : 'Student';
+  const initials = currentUser.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+  document.getElementById('sb-avatar').textContent = initials;
+
+  // Hide admin-only nav items for students
+  document.querySelectorAll('.admin-only').forEach(el => {
+    el.style.display = currentUser.role === 'admin' ? '' : 'none';
   });
+
+  renderAll();
+  showPage('dashboard', document.querySelector('.nav-btn.active'));
 }
 
-function stopBarcodeScan(){
-  if(barcodeScanner){
-    barcodeScanner.stop().then(function(){barcodeScanner=null;}).catch(function(){});
-  }
+function doLogout() {
+  stopCamera();
+  currentUser = null;
+  document.getElementById('login-screen').classList.remove('hidden');
+  document.getElementById('login-user').value = '';
+  document.getElementById('login-pass').value = '';
 }
 
-function onBarcodeScan(text){
-  var id=text.trim().toUpperCase();
-  var stu=null;
-  for(var i=0;i<students.length;i++){if(students[i].id===id){stu=students[i];break;}}
-  if(stu){
-    markBarcodeAtt(stu.id,stu.name,'General','Barcode Scan');
-  }else{
-    showBarcodeResult('err','No student with ID/Barcode: '+text);
-  }
+// ══ NAVIGATION ══
+function showPage(name, btn) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (name==='scanner') { renderQRGrid(); renderScanFeed(); }
+  if (name==='reports') renderReports();
+  if (name!=='scanner') stopCamera();
 }
 
-function manualBarcodeMark(){
-  var id=document.getElementById('manualBarcode').value.trim().toUpperCase();
-  var crs=document.getElementById('barcodeCourse').value||'General';
-  if(!id){showBarcodeResult('err','Please enter barcode or ID');return;}
-  var stu=null;
-  for(var i=0;i<students.length;i++){if(students[i].id===id){stu=students[i];break;}}
-  if(stu){
-    markBarcodeAtt(stu.id,stu.name,crs,'Barcode Manual');
-    document.getElementById('manualBarcode').value='';
-  }else{
-    showBarcodeResult('err','No student with ID/Barcode: '+id);
-  }
+// ══ MODAL ══
+function openModal(id){ document.getElementById(id).classList.add('open'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(m=>{
+  m.addEventListener('click', e=>{ if(e.target===m) m.classList.remove('open'); });
+});
+
+// ══ TOAST ══
+function toast(msg, color='var(--teal)') {
+  const area = document.getElementById('toast-area');
+  const el = document.createElement('div');
+  el.className='toast';
+  el.innerHTML=`<span class="toast-dot" style="background:${color}"></span>${msg}`;
+  area.appendChild(el);
+  setTimeout(()=>el.remove(), 3200);
 }
 
-function markBarcodeAtt(id,name,course,method){
-  var now=new Date();
-  var today=now.toISOString().split('T')[0];
-  var time=now.toLocaleTimeString();
-  for(var i=0;i<attendance.length;i++){
-    if(attendance[i].studentId===id&&attendance[i].date===today&&attendance[i].course===course){
-      showBarcodeResult('err',name+' already marked today');
-      return;
-    }
-  }
-  attendance.push({studentId:id,name:name,course:course,date:today,time:time,status:'Present',method:method});
-  localStorage.setItem('uni_attendance',JSON.stringify(attendance));
-  showBarcodeResult('ok','Marked Present! '+name+' - '+course);
-  updateDash();
-}
-
-function showBarcodeResult(type,msg){
-  var r=document.getElementById('barcodeResult');
-  r.className='scan-result '+type;
-  r.innerHTML=(type==='ok'?'<i class="fas fa-check-circle" style="font-size:1.5em"></i><br>':'<i class="fas fa-times-circle" style="font-size:1.5em"></i><br>')+msg;
-  r.style.display='block';
-  setTimeout(function(){r.style.display='none';},4000);
-}
-
-// Update barcode course select on init
-// ===== FACE RECOGNITION GLOBALS =====
-var faceModelsLoaded = false;
-var faceStream = null;
-var faceDetectionInterval = null;
-var faceDescriptors = {};
-var currentFaceMatch = null;
-var faceVideo = null;
-var faceCanvas = null;
-var faceCtx = null;
-var tempFacePhoto = null;
-
-// ===== DEMO DATA =====
-function loadDemo(){
-students=[
-  {id:'CS001',name:'Abebe Kebede',email:'abebe@uni.edu',dept:'Computer Science',year:'3rd',phone:'+251911111111', facePhoto: null},
-  {id:'CS002',name:'Almaz Tadesse',email:'almaz@uni.edu',dept:'Computer Science',year:'3rd',phone:'+251922222222', facePhoto: null},
-  {id:'WD001',name:'Dawit Hailu',email:'dawit@uni.edu',dept:'Web Development',year:'2nd',phone:'+251933333333', facePhoto: null},
-  {id:'DB001',name:'Fatuma Ahmed',email:'fatuma@uni.edu',dept:'Database Administration',year:'4th',phone:'+251944444444', facePhoto: null},
-  {id:'IT001',name:'Helen Desta',email:'helen@uni.edu',dept:'Information Technology',year:'3rd',phone:'+251966666666', facePhoto: null}
-];
-courses=[
-  {code:'CS301',name:'Database Systems'},
-  {code:'CS302',name:'Software Engineering'},
-  {code:'WD201',name:'Web Design'},
-  {code:'DB301',name:'Advanced SQL'},
-  {code:'IT401',name:'Network Security'},
-  {code:'DS101',name:'Data Science Basics'}
-];
-localStorage.setItem('uni_students',JSON.stringify(students));
-localStorage.setItem('uni_courses',JSON.stringify(courses));
-}
-
-// ===== INIT =====
-function init(){
-  var s=localStorage.getItem('uni_students');
-  var c=localStorage.getItem('uni_courses');
-  var a=localStorage.getItem('uni_attendance');
-  if(s){students=JSON.parse(s);}else{loadDemo();}
-  if(c){courses=JSON.parse(c);}
-  if(a){attendance=JSON.parse(a);}
-  if(localStorage.getItem('uni_session')==='active'){showApp();}
-  var today=new Date().toISOString().split('T')[0];
-  document.getElementById('dashDate').value=today;
-  document.getElementById('markDate').value=today;
-  document.getElementById('repFrom').value=today;
-  document.getElementById('repTo').value=today;
-  updateSelects();
-  updateDash();
-  renderStu();
-  renderMark();
-  loadFaceDescriptors();
-}
-
-// ===== LOGIN =====
-function login(){
-  var u=document.getElementById('loginUser').value.trim();
-  var p=document.getElementById('loginPass').value;
-  if(u==='admin'&&p==='admin2024'){
-    localStorage.setItem('uni_session','active');
-    showApp();
-  }else{
-    document.getElementById('loginError').style.display='block';
-    setTimeout(function(){document.getElementById('loginError').style.display='none';},3000);
-  }
-}
-
-function logout(){
-  localStorage.removeItem('uni_session');
-  location.reload();
-}
-
-function showApp(){
-  document.getElementById('loginPage').style.display='none';
-  document.getElementById('mainApp').style.display='block';
-  updateDash();
-  loadFaceModels();
-}
-
-// ===== NAVIGATION =====
-function showPage(page,nav){
-  var pages=document.querySelectorAll('.page');
-  for(var i=0;i<pages.length;i++){pages[i].classList.add('hidden');}
-  document.getElementById('page-'+page).classList.remove('hidden');
-  var navs=document.querySelectorAll('.nav-item');
-  for(var i=0;i<navs.length;i++){navs[i].classList.remove('active');}
-  if(nav){nav.classList.add('active');}
-  if(page!=='scan'){stopScan();}
-  if(page!=='barcode'){stopBarcodeScan();}
-  if(page!=='face'){stopFaceScan();}
-  if(page==='dash'){updateDash();}
-  if(page==='mark'){renderMark();}
-  if(page==='students'){renderStu();}
-  if(page==='face'){
-    document.getElementById('faceResultCard').style.display='none';
-    document.getElementById('faceStatus').className='face-status waiting';
-    document.getElementById('faceStatus').innerHTML='<i class="fas fa-hand"></i> Click "Start Camera" to begin face recognition';
-  }
-}
-
-// ===== UPDATE SELECTS =====
-function updateSelects(){
-  var st=document.getElementById('genStudent');
-  if(st){
-    st.innerHTML='<option value="">-- Select Student --</option>';
-    for(var i=0;i<students.length;i++){
-      st.innerHTML+='<option value="'+students[i].id+'">'+students[i].name+' ('+students[i].id+')</option>';
-    }
-  }
-  var cs=['genCourse','manualCourse','markCourse','repCourse','barcodeCourse'];
-  for(var i=0;i<cs.length;i++){
-    var el=document.getElementById(cs[i]);
-    if(el){
-      el.innerHTML='<option value="">'+(i<2?'-- Select Course --':'All')+'</option>';
-      for(var j=0;j<courses.length;j++){
-        el.innerHTML+='<option value="'+courses[j].code+'">'+courses[j].name+'</option>';
-      }
-    }
-  }
-  var ds=['addDept','markDept','repDept'];
-  for(var i=0;i<ds.length;i++){
-    var el=document.getElementById(ds[i]);
-    if(el){
-      el.innerHTML='<option value="">'+(i===0?'Select Department':'All')+'</option>';
-      for(var j=0;j<depts.length;j++){
-        el.innerHTML+='<option value="'+depts[j]+'">'+depts[j]+'</option>';
-      }
-    }
-  }
-}
-
-// ===== DASHBOARD =====
-function updateDash(){
-  var date=document.getElementById('dashDate').value;
-  var recs=[];
-  for(var i=0;i<attendance.length;i++){
-    if(attendance[i].date===date){recs.push(attendance[i]);}
-  }
-  var pre=0,abs=0,late=0,exc=0,ear=0;
-  for(var i=0;i<recs.length;i++){
-    if(recs[i].status==='Present'){pre++;}
-    else if(recs[i].status==='Absent'){abs++;}
-    else if(recs[i].status==='Late'){late++;}
-    else if(recs[i].status==='Excused'){exc++;}
-    else if(recs[i].status==='Early Leave'){ear++;}
-  }
-  document.getElementById('stTotal').textContent=students.length;
-  document.getElementById('stPresent').textContent=pre;
-  document.getElementById('stAbsent').textContent=abs;
-  document.getElementById('stLate').textContent=late;
-  document.getElementById('stExcused').textContent=exc;
-  document.getElementById('stEarly').textContent=ear;
-  var box=document.getElementById('dashList');
-  if(recs.length===0){
-    box.innerHTML='<div class="empty"><i class="fas fa-clipboard-list"></i><p>No records for '+date+'</p></div>';
-  }else{
-    var html='<table><thead><tr><th>Name</th><th>ID</th><th>Course</th><th>Status</th><th>Time</th><th>Method</th></tr></thead><tbody>';
-    for(var i=0;i<recs.length;i++){
-      var r=recs[i];
-      var b=r.status==='Present'?'badge-present':r.status==='Absent'?'badge-absent':r.status==='Late'?'badge-late':r.status==='Excused'?'badge-excused':'badge-early';
-      var methodIcon = r.method === 'Face Recognition' ? '<i class="fas fa-face-smile" style="color:#1a56db"></i>' : r.method === 'QR Scan' ? '<i class="fas fa-qrcode" style="color:#1a56db"></i>' : '<i class="fas fa-hand-pointer" style="color:#64748b"></i>';
-      html+='<tr><td>'+r.name+'</td><td>'+r.studentId+'</td><td>'+r.course+'</td><td><span class="badge '+b+'">'+r.status+'</span></td><td>'+r.time+'</td><td>'+methodIcon+' '+r.method+'</td></tr>';
-    }
-    html+='</tbody></table>';
-    box.innerHTML=html;
-  }
-}
-
-// ===== QR GENERATION =====
-function genQR(){
-  var sid=document.getElementById('genStudent').value;
-  var cid=document.getElementById('genCourse').value;
-  var sess=document.getElementById('genSession').value.trim();
-  if(!sid||!cid){alert('Select student and course!');return;}
-  var stu=null,crs=null;
-  for(var i=0;i<students.length;i++){if(students[i].id===sid){stu=students[i];break;}}
-  for(var i=0;i<courses.length;i++){if(courses[i].code===cid){crs=courses[i];break;}}
-  curQR={studentId:stu.id,name:stu.name,course:crs.code,courseName:crs.name,session:sess||'Regular',time:new Date().toISOString()};
-  document.getElementById('qrcode').innerHTML='';
-  new QRCode(document.getElementById('qrcode'),{text:JSON.stringify(curQR),width:200,height:200,colorDark:'#1a56db',colorLight:'#fff',correctLevel:QRCode.CorrectLevel.H});
-  document.getElementById('qrInfo').textContent=stu.name+' - '+crs.name;
-  document.getElementById('qrBox').style.display='block';
-}
-
-function dlQR(){
-  var c=document.querySelector('#qrcode canvas');
-  if(c){
-    var a=document.createElement('a');
-    a.download='QR-'+curQR.studentId+'.png';
-    a.href=c.toDataURL();
-    a.click();
-  }
-}
-
-// ===== SCANNING =====
-function startScan(){
-  if(scanner){return;}
-  if(typeof Html5Qrcode==='undefined'){alert('Scanner library not loaded. Check internet.');return;}
-  scanner=new Html5Qrcode('reader');
-  scanner.start({facingMode:'environment'},{fps:10,qrbox:{width:200,height:200}},function(text){onScan(text);},function(err){}).catch(function(err){showScan('err','Camera error. Allow camera access.');});
-}
-
-function stopScan(){
-  if(scanner){
-    scanner.stop().then(function(){scanner=null;}).catch(function(){});
-  }
-}
-
-function onScan(text){
-  try{
-    var data=JSON.parse(text);
-    if(data.studentId){
-      markAtt(data.studentId,data.name,data.course||'General','QR Scan');
-      return;
-    }
-  }catch(e){}
-  var id=text.trim().toUpperCase();
-  var stu=null;
-  for(var i=0;i<students.length;i++){if(students[i].id===id){stu=students[i];break;}}
-  if(stu){markAtt(stu.id,stu.name,'General','Barcode');}
-  else{showScan('err','Student ID "'+text+'" not found');}
-}
-
-function manualMark(){
-  var id=document.getElementById('manualId').value.trim().toUpperCase();
-  var crs=document.getElementById('manualCourse').value||'General';
-  if(!id){showScan('err','Please enter student ID');return;}
-  var stu=null;
-  for(var i=0;i<students.length;i++){if(students[i].id===id){stu=students[i];break;}}
-  if(stu){
-    markAtt(stu.id,stu.name,crs,'Manual');
-    document.getElementById('manualId').value='';
-  }else{
-    showScan('err','No student with ID: '+id);
-  }
-}
-
-function markAtt(id,name,course,method){
-  var now=new Date();
-  var today=now.toISOString().split('T')[0];
-  var time=now.toLocaleTimeString();
-  for(var i=0;i<attendance.length;i++){
-    if(attendance[i].studentId===id&&attendance[i].date===today&&attendance[i].course===course){
-      showScan('err',name+' already marked today');
-      return;
-    }
-  }
-  attendance.push({studentId:id,name:name,course:course,date:today,time:time,status:'Present',method:method});
-  localStorage.setItem('uni_attendance',JSON.stringify(attendance));
-  showScan('ok','Marked Present! '+name+' - '+course);
-  updateDash();
-}
-
-function showScan(type,msg){
-  var r=document.getElementById('scanResult');
-  r.className='scan-result '+type;
-  r.innerHTML=(type==='ok'?'<i class="fas fa-check-circle" style="font-size:1.5em"></i><br>':'<i class="fas fa-times-circle" style="font-size:1.5em"></i><br>')+msg;
-  r.style.display='block';
-  setTimeout(function(){r.style.display='none';},4000);
-}
-
-// ============================================================
-// ===== FACE RECOGNITION FUNCTIONS =====
-// ============================================================
-
-function loadFaceDescriptors() {
-  var stored = localStorage.getItem('uni_face_descriptors');
-  if (stored) {
-    try {
-      var parsed = JSON.parse(stored);
-      for (var id in parsed) {
-        if (parsed[id]) {
-          faceDescriptors[id] = new Float32Array(parsed[id]);
-        }
-      }
-    } catch(e) {
-      console.error('Error loading face descriptors:', e);
-    }
-  }
-}
-
-function saveFaceDescriptors() {
-  var toSave = {};
-  for (var id in faceDescriptors) {
-    if (faceDescriptors[id]) {
-      toSave[id] = Array.from(faceDescriptors[id]);
-    }
-  }
-  localStorage.setItem('uni_face_descriptors', JSON.stringify(toSave));
-}
-
-async function loadFaceModels() {
-  var statusEl = document.getElementById('faceModelStatus');
-  var progressEl = document.getElementById('faceProgress');
-  if (!statusEl) return;
-
-  var modelPaths = [
-    { name: 'Tiny Face Detector', net: faceapi.nets.tinyFaceDetector, path: 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model/tiny_face_detector' },
-    { name: 'Face Landmarks', net: faceapi.nets.faceLandmark68Net, path: 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model/face_landmark_68' },
-    { name: 'Face Recognition', net: faceapi.nets.faceRecognitionNet, path: 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model/face_recognition' }
-  ];
+// ══ CAMERA QR SCANNING ══
+async function startCamera() {
+  const sessId = document.getElementById('scanner-session-select').value;
+  if (!sessId) { toast('Please select a session first', 'var(--amber)'); return; }
 
   try {
-    for (var i = 0; i < modelPaths.length; i++) {
-      statusEl.textContent = 'Loading ' + modelPaths[i].name + '...';
-      progressEl.style.width = ((i / modelPaths.length) * 100) + '%';
-      await modelPaths[i].net.loadFromUri(modelPaths[i].path);
-    }
+    videoStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width:{ideal:640}, height:{ideal:640} }
+    });
+    const video = document.getElementById('camera-video');
+    video.srcObject = videoStream;
+    await video.play();
 
-    progressEl.style.width = '100%';
-    statusEl.textContent = 'All models loaded!';
-    faceModelsLoaded = true;
+    document.getElementById('cam-placeholder').style.display = 'none';
+    document.getElementById('cam-wrap').style.display = 'block';
+    document.getElementById('cam-start-btn').style.display = 'none';
+    document.getElementById('cam-stop-btn').style.display = 'inline-flex';
+    document.getElementById('scan-status').textContent = '🔍 Scanning…';
+    document.getElementById('scan-sub-text').textContent = 'Hold a student QR code up to the camera';
 
-    setTimeout(function() {
-      var loadingEl = document.getElementById('faceModelsLoading');
-      if (loadingEl) loadingEl.style.display = 'none';
-      var cardEl = document.getElementById('faceCard');
-      if (cardEl) cardEl.style.display = 'block';
-      var btnEl = document.getElementById('btnFaceStart');
-      if (btnEl) btnEl.disabled = false;
-    }, 500);
-
-  } catch (err) {
-    statusEl.textContent = 'Error loading models: ' + err.message;
-    progressEl.style.background = '#ef4444';
-    console.error('Face model loading error:', err);
+    scanInterval = setInterval(scanFrame, 200);
+  } catch(err) {
+    toast('Camera access denied. Please allow camera permission.', 'var(--red)');
+    document.getElementById('scan-status').textContent = '⚠️ Camera access denied';
+    console.error(err);
   }
 }
 
-async function extractFaceDescriptor(imageElement) {
-  if (!faceModelsLoaded) {
-    alert('Face models not loaded yet. Please wait.');
-    return null;
+function stopCamera() {
+  if (scanInterval) { clearInterval(scanInterval); scanInterval = null; }
+  if (videoStream) {
+    videoStream.getTracks().forEach(t=>t.stop());
+    videoStream = null;
   }
-  try {
-    var detection = await faceapi.detectSingleFace(imageElement, new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.5 }))
-      .withFaceLandmarks()
-      .withFaceDescriptor();
-    if (detection) {
-      return detection.descriptor;
-    }
-    return null;
-  } catch (err) {
-    console.error('Face extraction error:', err);
-    return null;
+  const video = document.getElementById('camera-video');
+  if (video) video.srcObject = null;
+  const wrap = document.getElementById('cam-wrap');
+  const ph = document.getElementById('cam-placeholder');
+  if (wrap) wrap.style.display = 'none';
+  if (ph) ph.style.display = 'flex';
+  const startBtn = document.getElementById('cam-start-btn');
+  const stopBtn = document.getElementById('cam-stop-btn');
+  if (startBtn) startBtn.style.display = 'inline-flex';
+  if (stopBtn) stopBtn.style.display = 'none';
+  const st = document.getElementById('scan-status');
+  if (st) st.textContent = 'Camera stopped';
+}
+
+function scanFrame() {
+  const video = document.getElementById('camera-video');
+  const canvas = document.getElementById('camera-canvas');
+  if (!video || video.readyState < 2) return;
+
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0);
+
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
+
+  if (code) {
+    const now = Date.now();
+    // Debounce: same QR not rescanned within 3 seconds
+    if (code.data === lastScanned && now - lastScannedTime < 3000) return;
+    lastScanned = code.data;
+    lastScannedTime = now;
+    processQRData(code.data);
   }
 }
 
-function previewFacePhoto(input) {
-  var preview = document.getElementById('facePreview');
-  if (input.files && input.files[0]) {
-    var reader = new FileReader();
-    reader.onload = function(e) {
-      tempFacePhoto = e.target.result;
-      preview.innerHTML = '<img src="' + e.target.result + '" alt="Preview">';
-    };
-    reader.readAsDataURL(input.files[0]);
+function processQRData(data) {
+  let parsed;
+  try { parsed = JSON.parse(data); } catch(e) {
+    // Try matching by raw ID string
+    parsed = { id: data.trim() };
   }
-}
+  const sessId = document.getElementById('scanner-session-select').value;
+  if (!sessId) { toast('No session selected', 'var(--amber)'); return; }
 
-async function startFaceScan() {
-  if (!faceModelsLoaded) {
-    alert('Face recognition models are still loading. Please wait.');
+  const student = students.find(s => s.id === parsed.id || s.id === data.trim());
+  if (!student) {
+    document.getElementById('scan-status').textContent = '⚠️ Unknown QR Code';
+    toast('QR code not recognized: ' + data.slice(0,30), 'var(--amber)');
     return;
   }
 
-  faceVideo = document.getElementById('faceVideo');
-  faceCanvas = document.getElementById('faceOverlay');
-  faceCtx = faceCanvas.getContext('2d');
+  const sess = sessions.find(s=>s.id===sessId);
+  if (!sess) return;
 
-  try {
-    faceStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 640, height: 480 } });
-    faceVideo.srcObject = faceStream;
+  if (sess.scanned.includes(student.id)) {
+    document.getElementById('scan-status').textContent = '⚠️ Already scanned: ' + student.first;
+    toast(student.first + ' already scanned in this session', 'var(--amber)');
+    return;
+  }
 
-    await new Promise(function(resolve) {
-      faceVideo.onloadedmetadata = function() {
-        faceCanvas.width = faceVideo.videoWidth;
-        faceCanvas.height = faceVideo.videoHeight;
-        resolve();
-      };
-    });
+  // SUCCESS
+  sess.scanned.push(student.id);
+  const now2 = new Date();
+  const record = {
+    studentId: student.id, sessionId: sessId,
+    studentName: student.first+' '+student.last,
+    sessionName: sess.name, course: sess.course, courseCode: sess.code,
+    date: now2.toLocaleDateString(), time: now2.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),
+    method: 'QR Scan', status: 'present'
+  };
+  attendanceRecords.push(record);
 
-    document.getElementById('faceStatus').className = 'face-status loading';
-    document.getElementById('faceStatus').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Looking for faces...';
+  // Flash
+  const wrap = document.getElementById('cam-wrap');
+  if (wrap) {
+    const flash = document.createElement('div');
+    flash.className = 'success-flash';
+    wrap.appendChild(flash);
+    setTimeout(()=>flash.remove(), 600);
+  }
 
-    faceDetectionInterval = setInterval(detectAndRecognizeFace, 500);
+  document.getElementById('scan-status').textContent = '✅ ' + student.first + ' ' + student.last;
+  document.getElementById('scan-sub-text').textContent = student.id + ' — ' + sess.course;
+  setTimeout(()=>{
+    if (document.getElementById('scan-status'))
+      document.getElementById('scan-status').textContent = '🔍 Scanning…';
+  }, 2000);
 
-  } catch (err) {
-    document.getElementById('faceStatus').className = 'face-status error';
-    document.getElementById('faceStatus').innerHTML = '<i class="fas fa-times-circle"></i> Camera error: ' + err.message;
+  // Feed
+  const feed = document.getElementById('scan-feed');
+  const empty = feed.querySelector('.empty-state');
+  if (empty) feed.innerHTML='';
+  const entry = document.createElement('div');
+  entry.className='scan-entry';
+  entry.innerHTML=`
+    <div class="scan-entry-dot"></div>
+    <div>
+      <div class="scan-entry-name">${student.first} ${student.last}</div>
+      <div style="font-size:12px;color:var(--slate-light)">${student.id} · ${sess.course}</div>
+    </div>
+    <div class="scan-entry-time">${record.time}</div>`;
+  feed.prepend(entry);
+
+  const count = sess.scanned.length;
+  document.getElementById('live-scan-badge').textContent = count+' scanned';
+  document.getElementById('live-count').textContent = count;
+  toast('✅ '+student.first+' '+student.last+' marked present');
+  renderDashboard();
+}
+
+// ══ CREATE SESSION ══
+function createSession() {
+  const name    = document.getElementById('sess-name').value.trim();
+  const course  = document.getElementById('sess-course').value.trim();
+  const code    = document.getElementById('sess-code').value.trim();
+  const dept    = document.getElementById('sess-dept').value;
+  const lecturer= document.getElementById('sess-lecturer').value.trim();
+  const date    = document.getElementById('sess-date').value;
+  const time    = document.getElementById('sess-time').value;
+  if (!name||!course||!date) { toast('Please fill in required fields','var(--red)'); return; }
+  const sess={ id:'SESS-'+Date.now(), name, course, code, dept, lecturer, date, time, status:'active', scanned:[] };
+  sessions.push(sess);
+  ['sess-name','sess-course','sess-code','sess-lecturer'].forEach(id=>document.getElementById(id).value='');
+  closeModal('new-session-modal');
+  toast('Session "'+name+'" created');
+  renderAll();
+}
+
+// ══ ADD STUDENT ══
+function addStudent() {
+  const first=document.getElementById('stu-first').value.trim();
+  const last=document.getElementById('stu-last').value.trim();
+  const id=document.getElementById('stu-id').value.trim();
+  const year=document.getElementById('stu-year').value;
+  const dept=document.getElementById('stu-dept').value;
+  if (!first||!last||!id){ toast('Fill in all required fields','var(--red)'); return; }
+  if (students.find(s=>s.id===id)){ toast('Student ID already exists','var(--red)'); return; }
+  students.push({id,first,last,dept,year});
+  ['stu-first','stu-last','stu-id'].forEach(i=>document.getElementById(i).value='');
+  closeModal('add-student-modal');
+  toast(first+' '+last+' added');
+  renderAll();
+}
+
+// ══ MANUAL ENTRY ══
+function submitManual() {
+  const sessId=document.getElementById('manual-session').value;
+  const stuId=document.getElementById('manual-student').value;
+  const status=document.getElementById('manual-status').value;
+  const note=document.getElementById('manual-note').value.trim();
+  if (!sessId||!stuId){ toast('Select session and student','var(--red)'); return; }
+  const sess=sessions.find(s=>s.id===sessId);
+  const student=students.find(s=>s.id===stuId);
+  const now=new Date();
+  if (status==='present'&&!sess.scanned.includes(stuId)) sess.scanned.push(stuId);
+  const record={
+    studentId:stuId, sessionId:sessId,
+    studentName:student.first+' '+student.last,
+    sessionName:sess.name, course:sess.course, courseCode:sess.code||'',
+    date:now.toLocaleDateString(), time:now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),
+    method:'Manual', status, note
+  };
+  attendanceRecords.push(record);
+  document.getElementById('manual-note').value='';
+  const list=document.getElementById('manual-list');
+  const emp=list.querySelector('.empty-state');
+  if (emp) list.innerHTML='';
+  const sc={present:'pill-green',absent:'pill-red',late:'pill-amber',excused:'pill-slate'};
+  const item=document.createElement('div');
+  item.className='scan-entry';
+  item.style.cssText='background:var(--amber-dim);border-color:rgba(245,158,11,0.2)';
+  item.innerHTML=`<div class="scan-entry-dot" style="background:var(--amber)"></div>
+    <div><div class="scan-entry-name">${student.first} ${student.last}</div>
+    <div style="font-size:12px;color:var(--slate-light)">${sess.course} ${note?'· '+note:''}</div></div>
+    <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
+      <span class="pill ${sc[status]}">${status}</span>
+      <span class="scan-entry-time">${record.time}</span>
+    </div>`;
+  list.prepend(item);
+  toast('Manual entry saved — '+student.first+' marked '+status,'var(--amber)');
+  renderAll();
+}
+
+// ══ RENDER ALL ══
+function renderAll() {
+  renderDashboard();
+  renderSessionSelects();
+  renderStudentSelects();
+  renderSessionsTable();
+  renderStudentTable();
+}
+
+function renderDashboard() {
+  const today=new Date().toLocaleDateString();
+  const todayRec=attendanceRecords.filter(r=>r.date===today);
+  const presentToday=new Set(todayRec.filter(r=>r.status==='present').map(r=>r.studentId)).size;
+  const total=students.length;
+  document.getElementById('today-date').textContent='Today — '+new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  document.getElementById('stat-total').textContent=total;
+  document.getElementById('stat-present').textContent=presentToday;
+  document.getElementById('stat-absent').textContent=Math.max(0,total-presentToday);
+  document.getElementById('stat-sessions').textContent=sessions.filter(s=>s.status==='active').length;
+  document.getElementById('stat-pct').textContent=total?Math.round(presentToday/total*100)+'% attendance':'—';
+  document.getElementById('stat-abs-pct').textContent=total?Math.round(Math.max(0,total-presentToday)/total*100)+'% not recorded':'—';
+
+  const recEl=document.getElementById('dash-recent');
+  const recent=[...attendanceRecords].reverse().slice(0,6);
+  if (!recent.length) {
+    recEl.innerHTML='<div class="empty-state"><div class="empty-icon">📭</div><p>No attendance recorded yet</p></div>';
+  } else {
+    recEl.innerHTML=recent.map(r=>`<div class="scan-entry" style="margin-bottom:8px">
+      <div class="scan-entry-dot" style="background:${r.method==='QR Scan'?'var(--teal)':'var(--amber)'}"></div>
+      <div><div class="scan-entry-name">${r.studentName}</div>
+      <div style="font-size:12px;color:var(--slate-light)">${r.course||r.sessionName} · ${r.method}</div></div>
+      <span class="pill ${r.status==='present'?'pill-green':r.status==='absent'?'pill-red':'pill-amber'}" style="margin-left:auto">${r.status}</span>
+    </div>`).join('');
+  }
+
+  const ratesEl=document.getElementById('course-rates');
+  if (!sessions.length){
+    ratesEl.innerHTML='<div class="empty-state"><div class="empty-icon">📊</div><p>No sessions yet</p></div>';
+  } else {
+    ratesEl.innerHTML=sessions.slice(0,5).map(s=>{
+      const rate=total?Math.round(s.scanned.length/total*100):0;
+      return `<div style="margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px">
+          <div><span style="font-weight:600">${s.course}</span> <span style="font-size:11px;color:var(--slate)">${s.code||''}</span></div>
+          <span style="color:var(--teal);font-weight:700">${rate}%</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${rate}%"></div></div>
+        <div style="font-size:11px;color:var(--slate-light);margin-top:3px">${s.scanned.length}/${total} · ${s.dept}</div>
+      </div>`;
+    }).join('');
+  }
+
+  const tbody=document.getElementById('dash-tbody');
+  if (!sessions.length){
+    tbody.innerHTML='<tr><td colspan="7"><div class="empty-state" style="padding:20px"><p>No sessions. Click "+ New Session".</p></div></td></tr>';
+  } else {
+    tbody.innerHTML=sessions.map(s=>{
+      const rate=total?Math.round(s.scanned.length/total*100):0;
+      return `<tr>
+        <td style="font-weight:600">${s.name}</td>
+        <td>${s.course} <span style="font-size:11px;color:var(--slate)">${s.code||''}</span></td>
+        <td style="font-size:12px;color:var(--slate-light)">${s.dept}</td>
+        <td>${s.date}</td>
+        <td><span class="pill pill-green">${s.scanned.length}</span></td>
+        <td>${rate}%</td>
+        <td><span class="pill ${s.status==='active'?'pill-green':'pill-slate'}">${s.status}</span></td>
+      </tr>`;
+    }).join('');
   }
 }
 
-function stopFaceScan() {
-  if (faceDetectionInterval) {
-    clearInterval(faceDetectionInterval);
-    faceDetectionInterval = null;
-  }
-  if (faceStream) {
-    faceStream.getTracks().forEach(function(track) { track.stop(); });
-    faceStream = null;
-  }
-  if (faceVideo) {
-    faceVideo.srcObject = null;
-  }
-  if (faceCtx && faceCanvas) {
-    faceCtx.clearRect(0, 0, faceCanvas.width, faceCanvas.height);
-  }
-  var statusEl = document.getElementById('faceStatus');
-  if (statusEl) {
-    statusEl.className = 'face-status waiting';
-    statusEl.innerHTML = '<i class="fas fa-hand"></i> Click "Start Camera" to begin face recognition';
-  }
-  var resultEl = document.getElementById('faceResultCard');
-  if (resultEl) resultEl.style.display = 'none';
-  currentFaceMatch = null;
+function renderSessionSelects() {
+  const opts=sessions.map(s=>`<option value="${s.id}">${s.course} — ${s.name}</option>`).join('');
+  ['scanner-session-select','manual-session'].forEach(id=>{
+    const el=document.getElementById(id);
+    if (el) el.innerHTML='<option value="">— Select Session —</option>'+opts;
+  });
 }
 
-async function detectAndRecognizeFace() {
-  if (!faceVideo || faceVideo.readyState !== 4) return;
+function renderStudentSelects() {
+  const opts=students.map(s=>`<option value="${s.id}">${s.first} ${s.last} (${s.id})</option>`).join('');
+  const el=document.getElementById('manual-student');
+  if (el) el.innerHTML='<option value="">— Choose a student —</option>'+opts;
+}
 
-  try {
-    var detections = await faceapi.detectAllFaces(faceVideo, new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.5 }))
-      .withFaceLandmarks()
-      .withFaceDescriptors();
+function renderSessionsTable() {
+  const tbody=document.getElementById('sessions-tbody');
+  let list=sessions;
+  if (sessionFilter==='active') list=sessions.filter(s=>s.status==='active');
+  if (sessionFilter==='closed') list=sessions.filter(s=>s.status==='closed');
+  if (!list.length){
+    tbody.innerHTML='<tr><td colspan="10"><div class="empty-state" style="padding:20px"><p>No sessions found.</p></div></td></tr>';
+    return;
+  }
+  tbody.innerHTML=list.map(s=>{
+    const rate=students.length?Math.round(s.scanned.length/students.length*100):0;
+    return `<tr>
+      <td style="font-weight:600">${s.name}</td>
+      <td>${s.course} <span style="font-size:11px;color:var(--slate)">${s.code||''}</span></td>
+      <td style="font-size:12px">${s.dept}</td>
+      <td style="font-size:12px">${s.lecturer||'—'}</td>
+      <td>${s.date}</td>
+      <td>${s.time}</td>
+      <td><span class="pill pill-green">${s.scanned.length}</span></td>
+      <td>${rate}%</td>
+      <td><span class="pill ${s.status==='active'?'pill-green':'pill-slate'}">${s.status}</span></td>
+      <td style="display:flex;gap:6px">
+        ${s.status==='active'?`<button class="btn btn-sm btn-danger" onclick="closeSession('${s.id}')">Close</button>`:''}
+        <button class="btn btn-sm btn-ghost" onclick="deleteSession('${s.id}')">🗑</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
 
-    faceCtx.clearRect(0, 0, faceCanvas.width, faceCanvas.height);
+function filterSessions(f,btn){
+  sessionFilter=f;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderSessionsTable();
+}
 
-    if (detections.length === 0) {
-      document.getElementById('faceStatus').className = 'face-status loading';
-      document.getElementById('faceStatus').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Looking for faces...';
-      return;
-    }
+function closeSession(id){ const s=sessions.find(s=>s.id===id); if(s){ s.status='closed'; renderAll(); toast('Session closed'); } }
+function deleteSession(id){ sessions=sessions.filter(s=>s.id!==id); renderAll(); toast('Session deleted','var(--red)'); }
 
-    var dims = faceapi.matchDimensions(faceCanvas, faceVideo, true);
-    faceapi.draw.drawDetections(faceCanvas, faceapi.resizeResults(detections, dims));
+function renderStudentTable() {
+  const q=(document.getElementById('student-search')?.value||'').toLowerCase();
+  const tbody=document.getElementById('students-tbody');
+  const list=students.filter(s=>s.first.toLowerCase().includes(q)||s.last.toLowerCase().includes(q)||s.id.toLowerCase().includes(q));
+  if (!list.length){
+    tbody.innerHTML='<tr><td colspan="9"><div class="empty-state" style="padding:20px"><p>No students found.</p></div></td></tr>';
+    return;
+  }
+  tbody.innerHTML=list.map((s,i)=>{
+    const present=attendanceRecords.filter(r=>r.studentId===s.id&&r.status==='present').length;
+    const absent=attendanceRecords.filter(r=>r.studentId===s.id&&r.status==='absent').length;
+    const total=present+absent;
+    const rate=total?Math.round(present/total*100)+'%':'—';
+    const genderPill=s.gender==='F'?'<span class="pill pill-amber" style="font-size:11px">F</span>':'<span class="pill pill-slate" style="font-size:11px">M</span>';
+    return `<tr>
+      <td style="color:var(--slate);font-size:13px">${i+1}</td>
+      <td><div style="display:flex;align-items:center;gap:10px">
+        <div class="avatar" style="width:30px;height:30px;font-size:11px;background:${s.gender==='F'?'linear-gradient(135deg,#f59e0b,#d97706)':'linear-gradient(135deg,var(--teal),#00a88c)'}">${s.first[0]}${s.last[0]}</div>
+        <div><div style="font-weight:600">${s.first} ${s.last}</div><div style="font-size:11px;color:var(--slate-light)">${s.year}</div></div>
+      </div></td>
+      <td style="font-family:monospace;font-size:12px;color:var(--teal)">${s.id}</td>
+      <td>${genderPill}</td>
+      <td style="font-size:13px">${s.dept}</td>
+      <td style="font-size:13px">${s.year}</td>
+      <td><span class="pill pill-green">${present}</span></td>
+      <td><span class="pill pill-red">${absent}</span></td>
+      <td style="font-weight:600">${rate}</td>
+      <td><button class="btn btn-sm btn-ghost" onclick="viewQR('${s.id}')">📱 QR</button></td>
+      <td><button class="btn btn-sm btn-danger" onclick="deleteStudent('${s.id}')">🗑</button></td>
+    </tr>`;
+  }).join('');
+}
 
-    var bestMatch = null;
-    var bestDistance = 1.0;
-    var matchedStudent = null;
+function deleteStudent(id){ students=students.filter(s=>s.id!==id); renderAll(); toast('Student removed','var(--red)'); }
 
-    for (var i = 0; i < detections.length; i++) {
-      var descriptor = detections[i].descriptor;
+function renderQRGrid() {
+  const grid=document.getElementById('student-qr-grid');
+  if (!grid) return;
+  if (!students.length){ grid.innerHTML='<div class="empty-state"><p>No students enrolled.</p></div>'; return; }
+  grid.innerHTML=students.map(s=>`
+    <div onclick="viewQR('${s.id}')" style="cursor:pointer;text-align:center;padding:10px;background:var(--navy-light);border:1px solid var(--border);border-radius:10px;transition:all 0.15s" onmouseover="this.style.borderColor='var(--teal)'" onmouseout="this.style.borderColor='var(--border)'">
+      <div style="font-size:24px;margin-bottom:4px">📲</div>
+      <div style="font-size:12px;font-weight:600">${s.first} ${s.last}</div>
+      <div style="font-size:10px;color:var(--teal);margin-top:2px">${s.id}</div>
+    </div>`).join('');
+}
 
-      for (var studentId in faceDescriptors) {
-        if (faceDescriptors[studentId]) {
-          var distance = faceapi.euclideanDistance(descriptor, faceDescriptors[studentId]);
-          if (distance < bestDistance) {
-            bestDistance = distance;
-            bestMatch = studentId;
-          }
-        }
-      }
-    }
-
-    if (bestMatch && bestDistance < 0.6) {
-      for (var j = 0; j < students.length; j++) {
-        if (students[j].id === bestMatch) {
-          matchedStudent = students[j];
-          break;
-        }
-      }
-
-      if (matchedStudent) {
-        var box = detections[0].detection.box;
-        faceCtx.strokeStyle = '#10b981';
-        faceCtx.lineWidth = 3;
-        faceCtx.strokeRect(box.x, box.y, box.width, box.height);
-
-        faceCtx.fillStyle = '#10b981';
-        faceCtx.fillRect(box.x, box.y - 28, box.width, 28);
-        faceCtx.fillStyle = 'white';
-        faceCtx.font = 'bold 14px Arial';
-        faceCtx.fillText(matchedStudent.name + ' (' + matchedStudent.id + ')', box.x + 5, box.y - 8);
-
-        faceCtx.fillStyle = 'rgba(0,0,0,0.7)';
-        faceCtx.fillRect(box.x + box.width - 60, box.y + box.height - 20, 60, 20);
-        faceCtx.fillStyle = 'white';
-        faceCtx.font = '12px Arial';
-        faceCtx.fillText((1 - bestDistance).toFixed(2), box.x + box.width - 55, box.y + box.height - 5);
-
-        document.getElementById('faceStatus').className = 'face-status success';
-        document.getElementById('faceStatus').innerHTML = '<i class="fas fa-check-circle"></i> Recognized: ' + matchedStudent.name + '!';
-
-        if (!currentFaceMatch || currentFaceMatch.id !== matchedStudent.id) {
-          currentFaceMatch = matchedStudent;
-          autoMarkFaceAttendance(matchedStudent);
-        }
-      }
-    } else {
-      var box = detections[0].detection.box;
-      faceCtx.strokeStyle = '#ef4444';
-      faceCtx.lineWidth = 3;
-      faceCtx.strokeRect(box.x, box.y, box.width, box.height);
-
-      faceCtx.fillStyle = '#ef4444';
-      faceCtx.fillRect(box.x, box.y - 28, box.width, 28);
-      faceCtx.fillStyle = 'white';
-      faceCtx.font = 'bold 14px Arial';
-      faceCtx.fillText('Unknown Face', box.x + 5, box.y - 8);
-
-      document.getElementById('faceStatus').className = 'face-status error';
-      document.getElementById('faceStatus').innerHTML = '<i class="fas fa-question-circle"></i> Unknown face. Please register first.';
-      currentFaceMatch = null;
-    }
-
-  } catch (err) {
-    console.error('Face detection error:', err);
+function renderScanFeed() {
+  const feed=document.getElementById('scan-feed');
+  if (!feed) return;
+  if (!feed.querySelector('.scan-entry')) {
+    feed.innerHTML='<div class="empty-state"><div class="empty-icon">📡</div><p>Scans appear here in real time</p></div>';
   }
 }
 
-function autoMarkFaceAttendance(student) {
-  var now = new Date();
-  var today = now.toISOString().split('T')[0];
-  var time = now.toLocaleTimeString();
-  var course = 'General';
-
-  var alreadyMarked = false;
-  for (var i = 0; i < attendance.length; i++) {
-    if (attendance[i].studentId === student.id && attendance[i].date === today && attendance[i].method === 'Face Recognition') {
-      alreadyMarked = true;
-      break;
-    }
-  }
-
-  if (!alreadyMarked) {
-    attendance.push({
-      studentId: student.id,
-      name: student.name,
-      course: course,
-      date: today,
-      time: time,
-      status: 'Present',
-      method: 'Face Recognition'
-    });
-    localStorage.setItem('uni_attendance', JSON.stringify(attendance));
-    updateDash();
-  }
-
-  showFaceResult(student, alreadyMarked);
+function viewQR(id) {
+  const s=students.find(st=>st.id===id);
+  const container=document.getElementById('qr-view-container');
+  container.innerHTML='';
+  document.getElementById('qr-view-name').textContent=s.first+' '+s.last;
+  document.getElementById('qr-view-sub').textContent=s.id+' · '+s.dept+' · '+s.year;
+  const div=document.createElement('div'); div.className='qr-display';
+  container.appendChild(div);
+  new QRCode(div, {
+    text: JSON.stringify({id:s.id, name:s.first+' '+s.last, dept:s.dept}),
+    width:200, height:200, colorDark:'#0F1B2D', colorLight:'#ffffff'
+  });
+  openModal('qr-view-modal');
 }
 
-function showFaceResult(student, alreadyMarked) {
-  var card = document.getElementById('faceResultCard');
-  var content = document.getElementById('faceResultContent');
-
-  var photoHtml = student.facePhoto ? 
-    '<img src="' + student.facePhoto + '" style="width:100px;height:100px;border-radius:50%;object-fit:cover;border:3px solid #10b981;margin-bottom:15px">' :
-    '<div style="width:100px;height:100px;border-radius:50%;background:#1a56db;color:white;display:flex;align-items:center;justify-content:center;font-size:2.5em;font-weight:bold;margin:0 auto 15px">' + student.name.charAt(0) + '</div>';
-
-  var statusBadge = alreadyMarked ? 
-    '<span class="badge badge-late" style="font-size:1em"><i class="fas fa-clock"></i> Already Marked Today</span>' :
-    '<span class="badge badge-present" style="font-size:1em"><i class="fas fa-check"></i> Present - Auto Marked!</span>';
-
-  content.innerHTML = 
-    photoHtml +
-    '<h3 style="color:#1e293b;font-size:1.4em;margin-bottom:5px">' + student.name + '</h3>' +
-    '<p style="color:#64748b;margin-bottom:10px">ID: <strong>' + student.id + '</strong> | Dept: ' + (student.dept || 'N/A') + '</p>' +
-    '<p style="color:#64748b;margin-bottom:15px">Year: ' + (student.year || 'N/A') + ' | Email: ' + (student.email || 'N/A') + '</p>' +
-    '<div style="margin-bottom:15px">' + statusBadge + '</div>' +
-    '<p style="font-size:0.85em;color:#94a3b8"><i class="fas fa-face-smile"></i> Recognized via Face Recognition at ' + new Date().toLocaleTimeString() + '</p>';
-
-  card.style.display = 'block';
+function renderReports() {
+  const total=attendanceRecords.length;
+  const present=attendanceRecords.filter(r=>r.status==='present').length;
+  const absent=attendanceRecords.filter(r=>r.status==='absent').length;
+  document.getElementById('rep-total').textContent=total;
+  document.getElementById('rep-present').textContent=present;
+  document.getElementById('rep-absent').textContent=absent;
+  document.getElementById('rep-rate').textContent=total?Math.round(present/total*100)+'%':'—';
+  const tbody=document.getElementById('reports-tbody');
+  if (!attendanceRecords.length){
+    tbody.innerHTML='<tr><td colspan="8"><div class="empty-state" style="padding:20px"><p>No records yet.</p></div></td></tr>';
+    return;
+  }
+  const sc={present:'pill-green',absent:'pill-red',late:'pill-amber',excused:'pill-slate'};
+  tbody.innerHTML=[...attendanceRecords].reverse().map(r=>`<tr>
+    <td style="font-weight:600">${r.studentName}</td>
+    <td style="font-family:monospace;font-size:12px;color:var(--teal)">${r.studentId}</td>
+    <td>${r.course||'—'} <span style="font-size:11px;color:var(--slate)">${r.courseCode||''}</span></td>
+    <td>${r.sessionName}</td>
+    <td>${r.date}</td>
+    <td>${r.time}</td>
+    <td><span class="pill ${r.method==='QR Scan'?'pill-green':'pill-amber'}">${r.method}</span></td>
+    <td><span class="pill ${sc[r.status]}">${r.status}</span></td>
+  </tr>`).join('');
 }
 
-async function extractAndSaveDescriptor(studentId, photoDataUrl) {
-  try {
-    var img = new Image();
-    img.src = photoDataUrl;
-    await new Promise(function(resolve) { img.onload = resolve; });
-
-    var descriptor = await extractFaceDescriptor(img);
-    if (descriptor) {
-      faceDescriptors[studentId] = descriptor;
-      saveFaceDescriptors();
-      console.log('Face descriptor saved for ' + studentId);
-    } else {
-      console.log('No face detected in photo for ' + studentId);
-    }
-  } catch (err) {
-    console.error('Error extracting face descriptor:', err);
-  }
-}
-
-// ===== MARK ATTENDANCE =====
-function renderMark(){
-  var date=document.getElementById('markDate').value;
-  var crs=document.getElementById('markCourse').value;
-  var dept=document.getElementById('markDept').value;
-  var box=document.getElementById('markList');
-  box.innerHTML='';
-  for(var i=0;i<students.length;i++){
-    var s=students[i];
-    if(dept&&s.dept!==dept){continue;}
-    var rec=null;
-    for(var j=0;j<attendance.length;j++){
-      if(attendance[j].studentId===s.id&&attendance[j].date===date&&(!crs||attendance[j].course===crs)){
-        rec=attendance[j];break;
-      }
-    }
-    var st=rec?rec.status:'Not Marked';
-    var ap=st==='Present'?'on':'';
-    var aa=st==='Absent'?'on':'';
-    var al=st==='Late'?'on':'';
-    var ae=st==='Excused'?'on':'';
-    var aear=st==='Early Leave'?'on':'';
-    var b=st==='Present'?'badge-present':st==='Absent'?'badge-absent':st==='Late'?'badge-late':st==='Excused'?'badge-excused':st==='Early Leave'?'badge-early':'';
-    box.innerHTML+='<div class="att-item"><div class="att-info"><div class="att-avatar">'+s.name.charAt(0)+'</div><div><div style="font-weight:600">'+s.name+'</div><div style="font-size:0.85em;color:#64748b">'+s.id+' | '+s.dept+'</div></div></div><div class="status-btns"><button class="s-btn p '+ap+'" onclick="setStatus(\''+s.id+'\',\'Present\')">Present</button><button class="s-btn a '+aa+'" onclick="setStatus(\''+s.id+'\',\'Absent\')">Absent</button><button class="s-btn l '+al+'" onclick="setStatus(\''+s.id+'\',\'Late\')">Late</button><button class="s-btn e '+ae+'" onclick="setStatus(\''+s.id+'\',\'Excused\')">Excused</button><button class="s-btn ear '+aear+'" onclick="setStatus(\''+s.id+'\',\'Early Leave\')">Early Leave</button></div><span class="badge '+b+'">'+st+'</span></div>';
-  }
-}
-
-function setStatus(id,status){
-  var date=document.getElementById('markDate').value;
-  var crs=document.getElementById('markCourse').value||'General';
-  var na=[];
-  for(var i=0;i<attendance.length;i++){
-    if(!(attendance[i].studentId===id&&attendance[i].date===date&&attendance[i].course===crs)){
-      na.push(attendance[i]);
-    }
-  }
-  attendance=na;
-  var stu=null;
-  for(var i=0;i<students.length;i++){if(students[i].id===id){stu=students[i];break;}}
-  if(stu){
-    attendance.push({studentId:id,name:stu.name,course:crs,date:date,time:new Date().toLocaleTimeString(),status:status,method:'Manual'});
-  }
-  localStorage.setItem('uni_attendance',JSON.stringify(attendance));
-  renderMark();
-  updateDash();
-}
-
-function filterMark(){
-  var q=document.getElementById('markSearch').value.toLowerCase();
-  var items=document.querySelectorAll('.att-item');
-  for(var i=0;i<items.length;i++){
-    items[i].style.display=items[i].textContent.toLowerCase().indexOf(q)!==-1?'flex':'none';
-  }
-}
-
-// ===== STUDENTS =====
-function addStudent(){
-  var name=document.getElementById('addName').value.trim();
-  var id=document.getElementById('addId').value.trim().toUpperCase();
-  var email=document.getElementById('addEmail').value.trim();
-  var dept=document.getElementById('addDept').value;
-  var year=document.getElementById('addYear').value;
-  var phone=document.getElementById('addPhone').value.trim();
-  if(!name||!id){alert('Enter name and ID!');return;}
-  for(var i=0;i<students.length;i++){if(students[i].id===id){alert('ID already exists!');return;}}
-
-  var newStudent = {id:id,name:name,email:email,dept:dept,year:year,phone:phone,facePhoto:tempFacePhoto};
-  students.push(newStudent);
-  localStorage.setItem('uni_students',JSON.stringify(students));
-
-  if (tempFacePhoto && faceModelsLoaded) {
-    extractAndSaveDescriptor(id, tempFacePhoto);
-  }
-
-  document.getElementById('addName').value='';
-  document.getElementById('addId').value='';
-  document.getElementById('addEmail').value='';
-  document.getElementById('addPhone').value='';
-  document.getElementById('facePreview').innerHTML='<i class="fas fa-user"></i>';
-  document.getElementById('facePhotoInput').value='';
-  tempFacePhoto = null;
-  document.getElementById('addMsg').style.display='block';
-  setTimeout(function(){document.getElementById('addMsg').style.display='none';},3000);
-  updateSelects();
-  renderStu();
-  updateDash();
-  renderMark();
-}
-
-function delStu(id){
-  if(!confirm('Delete student '+id+'?')){return;}
-  var ns=[];
-  for(var i=0;i<students.length;i++){if(students[i].id!==id){ns.push(students[i]);}}
-  students=ns;
-  delete faceDescriptors[id];
-  saveFaceDescriptors();
-  localStorage.setItem('uni_students',JSON.stringify(students));
-  renderStu();
-  updateSelects();
-  updateDash();
-  renderMark();
-}
-
-function renderStu(){
-  var tb=document.getElementById('stuTable');
-  tb.innerHTML='';
-  for(var i=0;i<students.length;i++){
-    var s=students[i];
-    var faceIcon = s.facePhoto ? 
-      '<img src="' + s.facePhoto + '" style="width:40px;height:40px;border-radius:8px;object-fit:cover;border:2px solid #10b981">' :
-      '<i class="fas fa-user-slash" style="color:#94a3b8;font-size:1.2em"></i>';
-    var faceRegistered = faceDescriptors[s.id] ? 
-      '<span class="badge badge-present" style="font-size:0.6em;margin-left:5px">AI</span>' : '';
-    tb.innerHTML+='<tr><td><b>'+s.id+'</b></td><td>'+s.name+faceRegistered+'</td><td>'+(s.email||'-')+'</td><td>'+(s.dept||'-')+'</td><td>'+(s.year||'-')+'</td><td>'+(s.phone||'-')+'</td><td>'+faceIcon+'</td><td><button class="btn btn-red" onclick="delStu(\''+s.id+'\')" style="padding:5px 10px;font-size:0.8em"><i class="fas fa-trash"></i></button></td></tr>';
-  }
-}
-
-function searchStu(){
-  var q=document.getElementById('stuSearch').value.toLowerCase();
-  var rows=document.querySelectorAll('#stuTable tr');
-  for(var i=0;i<rows.length;i++){
-    rows[i].style.display=rows[i].textContent.toLowerCase().indexOf(q)!==-1?'':'none';
-  }
-}
-
-// ===== REPORTS =====
-function genReport(){
-  var from=document.getElementById('repFrom').value;
-  var to=document.getElementById('repTo').value;
-  var crs=document.getElementById('repCourse').value;
-  var dept=document.getElementById('repDept').value;
-  if(!from||!to){alert('Select date range!');return;}
-  var data=[];
-  for(var i=0;i<attendance.length;i++){
-    var a=attendance[i];
-    if(a.date>=from&&a.date<=to&&(!crs||a.course===crs)&&(!dept||getStudentDept(a.studentId)===dept)){
-      data.push(a);
-    }
-  }
-  curRep=data;
-  document.getElementById('repResult').style.display='block';
-  document.getElementById('repInfo').textContent='Period: '+from+' to '+to+' | Records: '+data.length;
-  var html='<table><thead><tr><th>#</th><th>Date</th><th>Name</th><th>ID</th><th>Dept</th><th>Course</th><th>Status</th><th>Time</th><th>Method</th></tr></thead><tbody>';
-  for(var i=0;i<data.length;i++){
-    var r=data[i];
-    var b=r.status==='Present'?'badge-present':r.status==='Absent'?'badge-absent':r.status==='Late'?'badge-late':r.status==='Excused'?'badge-excused':'badge-early';
-    var methodIcon = r.method === 'Face Recognition' ? '<i class="fas fa-face-smile" style="color:#1a56db"></i>' : r.method === 'QR Scan' ? '<i class="fas fa-qrcode" style="color:#1a56db"></i>' : '<i class="fas fa-hand-pointer" style="color:#64748b"></i>';
-    html+='<tr><td>'+(i+1)+'</td><td>'+r.date+'</td><td>'+r.name+'</td><td>'+r.studentId+'</td><td>'+getStudentDept(r.studentId)+'</td><td>'+r.course+'</td><td><span class="badge '+b+'">'+r.status+'</span></td><td>'+r.time+'</td><td>'+methodIcon+' '+r.method+'</td></tr>';
-  }
-  html+='</tbody></table>';
-  document.getElementById('repTable').innerHTML=html;
-}
-
-function getStudentDept(id){
-  for(var i=0;i<students.length;i++){if(students[i].id===id){return students[i].dept||'-';}}
-  return '-';
-}
-
-function dlPDF(){
-  if(curRep.length===0){alert('Generate report first!');return;}
-  var from=document.getElementById('repFrom').value;
-  var to=document.getElementById('repTo').value;
-
-  var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Attendance Report</title><style>';
-  html+='body{font-family:Arial,sans-serif;padding:30px;font-size:12px;color:#333}';
-  html+='h1{color:#1a56db;text-align:center;font-size:24px;margin-bottom:5px}';
-  html+='.subtitle{text-align:center;color:#666;margin-bottom:25px;font-size:14px}';
-  html+='.summary{display:flex;justify-content:space-around;background:#f8fafc;padding:15px;border-radius:10px;margin-bottom:25px}';
-  html+='.sum-box{text-align:center}';
-  html+='.sum-num{font-size:28px;font-weight:bold;color:#1a56db}';
-  html+='.sum-label{font-size:12px;color:#64748b;margin-top:5px}';
-  html+='table{width:100%;border-collapse:collapse;font-size:11px}';
-  html+='th{background:#1a56db;color:white;padding:10px;text-align:left;font-weight:600}';
-  html+='td{padding:8px 10px;border-bottom:1px solid #e5e7eb}';
-  html+='tr:nth-child(even){background:#f8fafc}';
-  html+='.status-present{color:#059669;font-weight:bold}';
-  html+='.status-absent{color:#dc2626;font-weight:bold}';
-  html+='.status-late{color:#d97706;font-weight:bold}';
-  html+='.status-excused{color:#64748b;font-weight:bold}';
-  html+='.status-early{color:#1e40af;font-weight:bold}';
-  html+='.footer{text-align:center;margin-top:30px;font-size:11px;color:#94a3b8;border-top:1px solid #e5e7eb;padding-top:15px}';
-  html+='</style></head><body>';
-
-  html+='<h1><i class="fas fa-university"></i> University Attendance Report</h1>';
-  html+='<p class="subtitle">Period: <strong>'+from+'</strong> to <strong>'+to+'</strong></p>';
-
-  var pre=0,abs=0,late=0,exc=0,ear=0;
-  for(var i=0;i<curRep.length;i++){
-    if(curRep[i].status==='Present')pre++;
-    else if(curRep[i].status==='Absent')abs++;
-    else if(curRep[i].status==='Late')late++;
-    else if(curRep[i].status==='Excused')exc++;
-    else if(curRep[i].status==='Early Leave')ear++;
-  }
-  html+='<div class="summary">';
-  html+='<div class="sum-box"><div class="sum-num">'+curRep.length+'</div><div class="sum-label">Total Records</div></div>';
-  html+='<div class="sum-box"><div class="sum-num" style="color:#10b981">'+pre+'</div><div class="sum-label">Present</div></div>';
-  html+='<div class="sum-box"><div class="sum-num" style="color:#ef4444">'+abs+'</div><div class="sum-label">Absent</div></div>';
-  html+='<div class="sum-box"><div class="sum-num" style="color:#f59e0b">'+late+'</div><div class="sum-label">Late</div></div>';
-  html+='<div class="sum-box"><div class="sum-num" style="color:#8b5cf6">'+exc+'</div><div class="sum-label">Excused</div></div>';
-  html+='<div class="sum-box"><div class="sum-num" style="color:#f97316">'+ear+'</div><div class="sum-label">Early Leave</div></div>';
-  html+='</div>';
-
-  html+='<table><thead><tr><th>#</th><th>Date</th><th>Name</th><th>ID</th><th>Department</th><th>Course</th><th>Status</th><th>Time</th><th>Method</th></tr></thead><tbody>';
-  for(var i=0;i<curRep.length;i++){
-    var r=curRep[i];
-    var statusClass='status-'+r.status.toLowerCase().replace(' ','-');
-    html+='<tr><td>'+(i+1)+'</td><td>'+r.date+'</td><td>'+r.name+'</td><td>'+r.studentId+'</td><td>'+getStudentDept(r.studentId)+'</td><td>'+r.course+'</td><td class="'+statusClass+'">'+r.status+'</td><td>'+r.time+'</td><td>'+r.method+'</td></tr>';
-  }
-  html+='</tbody></table>';
-
-  html+='<div class="footer">Generated on '+new Date().toLocaleString()+' | QR + Face Attendance System</div>';
-  html+='</body></html>';
-
-  var blob=new Blob([html],{type:'text/html'});
-  var url=URL.createObjectURL(blob);
-  var a=document.createElement('a');
-  a.href=url;
-  a.download='Attendance-Report-'+from+'-to-'+to+'.html';
-  document.body.appendChild(a);
+function exportCSV() {
+  if (!attendanceRecords.length){ toast('No records to export','var(--amber)'); return; }
+  const header='Student Name,Student ID,Course,Course Code,Session,Date,Time,Method,Status\n';
+  const rows=attendanceRecords.map(r=>`"${r.studentName}","${r.studentId}","${r.course||''}","${r.courseCode||''}","${r.sessionName}","${r.date}","${r.time}","${r.method}","${r.status}"`).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([header+rows],{type:'text/csv'}));
+  a.download='attendance_'+new Date().toISOString().split('T')[0]+'.csv';
   a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-
-  var w=window.open(url,'_blank');
-  if(w){
-    setTimeout(function(){w.print();},500);
-  }
+  toast('CSV exported');
 }
 
-function dlCSV(){
-  var from=document.getElementById('repFrom').value;
-  var to=document.getElementById('repTo').value;
-  var crs=document.getElementById('repCourse').value;
-  var dept=document.getElementById('repDept').value;
-  var data=[];
-  for(var i=0;i<attendance.length;i++){
-    var a=attendance[i];
-    if(a.date>=from&&a.date<=to&&(!crs||a.course===crs)&&(!dept||getStudentDept(a.studentId)===dept)){
-      data.push(a);
-    }
-  }
-  var csv='Date,Name,ID,Department,Course,Status,Time,Method\n';
-  for(var i=0;i<data.length;i++){
-    var r=data[i];
-    csv+=r.date+','+r.name+','+r.studentId+','+getStudentDept(r.studentId)+','+r.course+','+r.status+','+r.time+','+r.method+'\n';
-  }
-  var blob=new Blob([csv],{type:'text/csv'});
-  var a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download='report-'+from+'-to-'+to+'.csv';
-  a.click();
-}
-
-init();
+// ── INIT ──
+document.addEventListener('DOMContentLoaded', ()=>{
+  document.getElementById('sess-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('sess-time').value=new Date().toTimeString().slice(0,5);
+});
 </script>
 </body>
 </html>
